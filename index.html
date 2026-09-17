@@ -1,633 +1,386 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Team Capacity, Schedule & Priority System</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeamSync</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Top Navigation (Desktop) -->
-  <nav class="top-nav">
-    <div class="nav-brand">TeamSync</div>
-    <div class="nav-links">
-      <button class="nav-item active" data-view="overview" data-i18n="nav_overview">ภาพรวม</button>
-      <button class="nav-item" data-view="schedule" data-i18n="nav_schedule">ตารางเวลา</button>
-      <button class="nav-item" data-view="matrix" data-i18n="nav_matrix">แมทริกซ์</button>
-      <button class="nav-item" data-view="me" data-i18n="nav_me">ของฉัน</button>
+  <!-- แถบนำทางด้านบน -->
+  <header class="top-nav" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: #fff; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <h2 style="margin: 0; font-size: 1.25rem;">TeamSync</h2>
+      <nav style="display: flex; gap: 8px;">
+        <button class="nav-btn active" data-view="overview" data-i18n="nav_overview">ภาพรวม</button>
+        <button class="nav-btn" data-view="schedule" data-i18n="nav_schedule">ตารางเวลา</button>
+        <button class="nav-btn" data-view="matrix" data-i18n="nav_matrix">แมทริกซ์</button>
+        <button class="nav-btn" data-view="me" data-i18n="nav_me">ของฉัน</button>
+      </nav>
     </div>
-    <div class="nav-extra-controls">
-      <!-- Language Switcher -->
-      <div class="segmented-control lang-switcher" role="group">
-        <button class="seg-btn active" id="lang-th">ไทย</button>
-        <button class="seg-btn" id="lang-en">English</button>
+
+    <!-- ส่วนปุ่มเข้าสู่ระบบ / ข้อมูลโปรไฟล์ -->
+    <div id="auth-container" style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; gap: 4px; margin-right: 8px;">
+        <button id="lang-th" class="lang-btn active">ไทย</button>
+        <button id="lang-en" class="lang-btn">English</button>
       </div>
-      <!-- Team Settings Button -->
-      <button class="btn btn-secondary btn-icon-only" id="btn-open-team-settings" title="Team Settings">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
+
+      <button id="btn-login" onclick="handleGoogleLogin()" style="padding: 7px 16px; border-radius: 20px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        🔑 เข้าสู่ระบบด้วย Google
       </button>
+
+      <div id="user-info" style="display: none; align-items: center; gap: 8px; background: #f5f5f5; padding: 4px 12px; border-radius: 20px;">
+        <img id="user-avatar" src="" alt="Profile" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+        <span id="user-name" style="font-size: 13px; font-weight: 600;"></span>
+        <button id="btn-logout" onclick="handleGoogleLogout()" style="padding: 3px 8px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 11px; margin-left: 4px;">ออก</button>
+      </div>
+
+      <button id="btn-open-team-settings" style="background: none; border: none; cursor: pointer; font-size: 1.1rem;" title="ตั้งค่าทีม">⚙️</button>
     </div>
-  </nav>
+  </header>
 
-  <!-- Main Content Shell -->
-  <main class="container">
-    
-    <!-- ==========================================
-         VIEW 1: OVERVIEW
-         ========================================== -->
-    <div id="view-overview" class="page-view active">
-      <header class="page-header">
-        <div class="header-left">
-          <h1 class="page-title" data-i18n="ov_title">ภาพรวมทีม</h1>
-          <p class="page-subtitle" id="ov-team-subtitle"></p>
+  <!-- หน้า 1: OVERVIEW -->
+  <main id="view-overview" class="page-view active" style="padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+      <div>
+        <h1 style="margin: 0 0 6px 0;" data-i18n="ov_title">ภาพรวมทีม</h1>
+        <p id="ov-team-subtitle" style="margin: 0; color: #666;"></p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-ov-1w" class="pill-btn" data-i18n="btn_1week">1 สัปดาห์</button>
+          <button id="btn-ov-2w" class="pill-btn active" data-i18n="btn_2weeks">2 สัปดาห์</button>
         </div>
-        <div class="header-actions">
-          <div class="segmented-control" role="group">
-            <button class="seg-btn" id="btn-ov-1w" data-i18n="btn_1week">1 สัปดาห์</button>
-            <button class="seg-btn active" id="btn-ov-2w" data-i18n="btn_2weeks">2 สัปดาห์</button>
-          </div>
-          <button class="btn btn-primary" id="open-find-time">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <span data-i18n="btn_find_time">ค้นหาเวลาว่าง</span>
-          </button>
-        </div>
-      </header>
-
-      <!-- Best Shared Time -->
-      <section class="section">
-        <div class="section-header-inline">
-          <div>
-            <h2 class="section-title" data-i18n="best_shared_title">ช่วงเวลาที่ว่างพร้อมกันมากที่สุด</h2>
-            <p class="section-caption" id="best-shared-caption"></p>
-          </div>
-          <span class="badge-subtle" data-i18n="top_3_recs">3 อันดับแนะนำ</span>
-        </div>
-        <div class="shared-time-grid" id="shared-time-list"></div>
-      </section>
-
-      <!-- Compact Team Schedule Grid -->
-      <section class="section">
-        <div class="section-header-inline">
-          <div>
-            <h2 class="section-title" data-i18n="team_sched_ov_title">ภาพรวมตารางเวลาทีม</h2>
-            <p class="section-caption" data-i18n="team_sched_ov_desc">สแกนแนวนอนดูรายคน หรือแนวตั้งดูความพร้อมของทั้งทีม</p>
-          </div>
-          <div class="schedule-legend">
-            <span class="legend-item"><span class="legend-box block-available"></span> <span data-i18n="status_free">ว่าง</span></span>
-            <span class="legend-item"><span class="legend-box block-work"></span> <span data-i18n="status_work">ทำงาน</span></span>
-            <span class="legend-item"><span class="legend-box block-busy"></span> <span data-i18n="status_busy">ไม่ว่าง</span></span>
-            <span class="legend-item"><span class="legend-box block-nodata"></span> <span data-i18n="status_nodata">ไม่มีข้อมูล</span></span>
-          </div>
-        </div>
-
-        <div class="matrix-grid-scroll-wrapper">
-          <table class="compact-sched-table" id="team-schedule-table"></table>
-        </div>
-      </section>
-
-      <!-- 2-Column Responsive Workspace -->
-      <div class="two-col-layout">
-        <!-- Left: Team Now -->
-        <section class="col-card">
-          <div class="section-title-wrap">
-            <h2 class="section-title" data-i18n="team_now_title">สถานะทีมตอนนี้</h2>
-            <span class="live-pill" data-i18n="status_live">สด</span>
-          </div>
-
-          <div class="status-summary-bar">
-            <div class="status-stat" data-status="available">
-              <span class="dot dot-available"></span>
-              <span class="stat-count" id="count-available">0</span>
-              <span class="stat-label" data-i18n="status_available">ว่าง</span>
-            </div>
-            <div class="status-stat" data-status="work">
-              <span class="dot dot-work"></span>
-              <span class="stat-count" id="count-work">0</span>
-              <span class="stat-label" data-i18n="status_working">กำลังทำงาน</span>
-            </div>
-            <div class="status-stat" data-status="busy">
-              <span class="dot dot-busy"></span>
-              <span class="stat-count" id="count-busy">0</span>
-              <span class="stat-label" data-i18n="status_busy">ติดธุระ</span>
-            </div>
-            <div class="status-stat" data-status="nodata">
-              <span class="dot dot-nodata"></span>
-              <span class="stat-count" id="count-nodata">0</span>
-              <span class="stat-label" data-i18n="status_nodata">ไม่มีข้อมูล</span>
-            </div>
-          </div>
-
-          <div class="team-list" id="team-now-list"></div>
-        </section>
-
-        <!-- Right: Priority Snapshot & Deadlines -->
-        <div class="right-stack">
-          <section class="col-card">
-            <div class="section-header-inline">
-              <h2 class="section-title" data-i18n="pri_snapshot_title">ภาพรวมความสำคัญงาน</h2>
-              <button class="btn-text" id="btn-open-matrix-from-ov" data-i18n="btn_open_matrix">เปิดแมทริกซ์ &rarr;</button>
-            </div>
-            
-            <div class="matrix-grid">
-              <div class="matrix-quadrant q-urgent-important">
-                <div class="q-header">
-                  <span class="q-tag">Q1</span>
-                  <span class="q-count" id="matrix-count-q1">0</span>
-                </div>
-                <div class="q-name" data-i18n="q1_name">สำคัญ + เร่งด่วน</div>
-              </div>
-
-              <div class="matrix-quadrant q-important">
-                <div class="q-header">
-                  <span class="q-tag">Q2</span>
-                  <span class="q-count" id="matrix-count-q2">0</span>
-                </div>
-                <div class="q-name" data-i18n="q2_name">สำคัญ + ไม่เร่งด่วน</div>
-              </div>
-
-              <div class="matrix-quadrant q-urgent">
-                <div class="q-header">
-                  <span class="q-tag">Q3</span>
-                  <span class="q-count" id="matrix-count-q3">0</span>
-                </div>
-                <div class="q-name" data-i18n="q3_name">ไม่สำคัญ + เร่งด่วน</div>
-              </div>
-
-              <div class="matrix-quadrant q-backlog">
-                <div class="q-header">
-                  <span class="q-tag">Q4</span>
-                  <span class="q-count" id="matrix-count-q4">0</span>
-                </div>
-                <div class="q-name" data-i18n="q4_name">ไม่สำคัญ + ไม่เร่งด่วน</div>
-              </div>
-            </div>
-
-            <div class="insights-box">
-              <div class="insight-row">
-                <span class="insight-bullet bullet-warn"></span>
-                <span id="insight-urgent-count"></span>
-              </div>
-              <div class="insight-row">
-                <span class="insight-bullet bullet-info"></span>
-                <span id="insight-unassigned-count"></span>
-              </div>
-            </div>
-          </section>
-
-          <section class="col-card">
-            <div class="section-header-inline">
-              <h2 class="section-title" data-i18n="upcoming_deadlines_title">เดดไลน์ที่ใกล้ถึง</h2>
-              <span class="badge-subtle" id="deadline-range-label"></span>
-            </div>
-            <div class="deadline-list" id="deadline-list"></div>
-          </section>
-        </div>
+        <button id="open-find-time" class="btn btn-dark" data-i18n="btn_find_time" style="background: #111; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">🕒 ค้นหาเวลาว่าง</button>
       </div>
     </div>
 
-    <!-- ==========================================
-         VIEW 2: FULL SCHEDULE PAGE
-         ========================================== -->
-    <div id="view-schedule" class="page-view">
-      <header class="page-header">
-        <div class="header-left">
-          <h1 class="page-title" data-i18n="sched_page_title">ตารางการทำงาน</h1>
-          <p class="page-subtitle" id="sched-view-caption"></p>
+    <!-- แนะนำ 3 อันดับ -->
+    <section style="margin-bottom: 30px;">
+      <h3 data-i18n="best_shared_title" style="margin-bottom: 4px;">ช่วงเวลาที่ว่างพร้อมกันมากที่สุด</h3>
+      <p id="best-shared-caption" style="margin: 0 0 16px 0; color: #777; font-size: 0.9rem;"></p>
+      <div id="shared-time-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
+    </section>
+
+    <!-- ตารางความพร้อมทีม -->
+    <section style="margin-bottom: 30px;">
+      <h3 data-i18n="team_sched_ov_title" style="margin-bottom: 4px;">ภาพรวมตารางเวลาทีม</h3>
+      <p data-i18n="team_sched_ov_desc" style="margin: 0 0 16px 0; color: #777; font-size: 0.9rem;">สแกนแนวนอนดูรายคน หรือแนวตั้งดูความพร้อมของทั้งทีม</p>
+      <div style="overflow-x: auto; background: #fff; border: 1px solid #eee; border-radius: 8px;">
+        <table id="team-schedule-table" style="width: 100%; border-collapse: collapse;"></table>
+      </div>
+    </section>
+
+    <!-- สถานะสด และ Matrix สรุป -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <h3 data-i18n="team_now_title" style="margin-top: 0;">สถานะทีมตอนนี้</h3>
+        <div style="display: flex; gap: 12px; font-size: 0.85rem; margin-bottom: 12px;">
+          <span>ว่าง: <b id="count-available">0</b></span>
+          <span>ทำงาน: <b id="count-work">0</b></span>
+          <span>ติดธุระ: <b id="count-busy">0</b></span>
+          <span>ไม่มีข้อมูล: <b id="count-nodata">0</b></span>
         </div>
-        <div class="header-actions">
-          <!-- Team | Person -->
-          <div class="segmented-control" role="group">
-            <button class="seg-btn active" id="btn-sched-scope-team" data-i18n="scope_team">ทีม</button>
-            <button class="seg-btn" id="btn-sched-scope-person" data-i18n="scope_person">รายบุคคล</button>
-          </div>
-
-          <select class="form-select select-compact" id="sched-person-select" style="display: none;"></select>
-
-          <!-- Overview | Detailed -->
-          <div class="segmented-control" role="group">
-            <button class="seg-btn active" id="btn-sched-mode-overview" data-i18n="mode_overview">ภาพรวม</button>
-            <button class="seg-btn" id="btn-sched-mode-detailed" data-i18n="mode_detailed">ละเอียด</button>
-          </div>
-
-          <!-- Range Switcher -->
-          <div class="segmented-control" id="sched-range-control" role="group">
-            <button class="seg-btn" id="btn-sched-1w" data-i18n="btn_1week">1 สัปดาห์</button>
-            <button class="seg-btn active" id="btn-sched-2w" data-i18n="btn_2weeks">2 สัปดาห์</button>
-          </div>
-
-          <!-- Single-Day Picker -->
-          <div class="date-picker-group" id="sched-day-control" style="display: none;">
-            <button class="btn btn-secondary btn-icon-only" id="btn-sched-prev-day">&larr;</button>
-            <select class="form-select select-compact" id="sched-single-day-select" style="font-weight:600;"></select>
-            <button class="btn btn-secondary btn-icon-only" id="btn-sched-next-day">&rarr;</button>
-          </div>
-        </div>
-      </header>
-
-      <div id="schedule-viewport-container"></div>
-    </div>
-
-    <!-- ==========================================
-         VIEW 3: PRIORITY MATRIX V1
-         ========================================== -->
-    <div id="view-matrix" class="page-view">
-      <header class="page-header">
-        <div class="header-left">
-          <h1 class="page-title" data-i18n="matrix_page_title">แมทริกซ์จัดลำดับความสำคัญ</h1>
-          <p class="page-subtitle" data-i18n="matrix_page_desc">กรอบการตัดสินใจ Eisenhower 2×2 และการกระจายภาระงานของทีม</p>
-        </div>
-        <div class="header-actions">
-          <div class="matrix-view-toggle">
-            <div class="segmented-control" role="group">
-              <button class="seg-btn active" id="mat-btn-team" data-i18n="scope_team">ทีม</button>
-              <button class="seg-btn" id="mat-btn-indiv" data-i18n="scope_person">รายบุคคล</button>
-            </div>
-            <select class="form-select select-compact" id="mat-person-select" style="display: none;"></select>
-          </div>
-          <button class="btn btn-primary" id="btn-open-add-task">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span data-i18n="btn_add_task">+ งาน</span>
-          </button>
-        </div>
-      </header>
-
-      <section class="matrix-summary-strip">
-        <div class="mat-sum-item"><span class="dot" style="background:#C03530;"></span><span data-i18n="q1_name">สำคัญ + เร่งด่วน:</span> <strong id="mat-sum-q1">0</strong></div>
-        <div class="mat-sum-item"><span class="dot" style="background:#2B70C9;"></span><span data-i18n="q2_name">สำคัญ + ไม่เร่งด่วน:</span> <strong id="mat-sum-q2">0</strong></div>
-        <div class="mat-sum-item"><span class="dot" style="background:#C97A24;"></span><span data-i18n="q3_name">ไม่สำคัญ + เร่งด่วน:</span> <strong id="mat-sum-q3">0</strong></div>
-        <div class="mat-sum-item"><span class="dot" style="background:#6A6A66;"></span><span data-i18n="q4_name">ไม่สำคัญ + ไม่เร่งด่วน:</span> <strong id="mat-sum-q4">0</strong></div>
+        <div id="team-now-list"></div>
       </section>
 
-      <div class="insights-box matrix-insights-bar" id="mat-factual-insights"></div>
-
-      <div class="eisenhower-2x2-wrapper">
-        <div class="eisenhower-quadrant q1-zone">
-          <div class="eq-header">
-            <div class="eq-title-wrap"><span class="eq-badge q1-badge">Q1</span><span class="eq-title" data-i18n="q1_name">สำคัญ + เร่งด่วน</span></div>
-            <span class="eq-count" id="count-badge-q1">0</span>
-          </div>
-          <div class="eq-card-list" id="eq-list-q1"></div>
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <h3 data-i18n="pri_snapshot_title" style="margin-top: 0;">ภาพรวมความสำคัญงาน</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div style="background: #ffebee; padding: 10px; border-radius: 6px;">Q1 สำคัญ+เร่งด่วน: <b id="matrix-count-q1">0</b></div>
+          <div style="background: #e8f5e9; padding: 10px; border-radius: 6px;">Q2 สำคัญ+ไม่เร่งด่วน: <b id="matrix-count-q2">0</b></div>
+          <div style="background: #fff8e1; padding: 10px; border-radius: 6px;">Q3 ไม่สำคัญ+เร่งด่วน: <b id="matrix-count-q3">0</b></div>
+          <div style="background: #f5f5f5; padding: 10px; border-radius: 6px;">Q4 ทั่วไป: <b id="matrix-count-q4">0</b></div>
         </div>
-
-        <div class="eisenhower-quadrant q2-zone">
-          <div class="eq-header">
-            <div class="eq-title-wrap"><span class="eq-badge q2-badge">Q2</span><span class="eq-title" data-i18n="q2_name">สำคัญ + ไม่เร่งด่วน</span></div>
-            <span class="eq-count" id="count-badge-q2">0</span>
-          </div>
-          <div class="eq-card-list" id="eq-list-q2"></div>
-        </div>
-
-        <div class="eisenhower-quadrant q3-zone">
-          <div class="eq-header">
-            <div class="eq-title-wrap"><span class="eq-badge q3-badge">Q3</span><span class="eq-title" data-i18n="q3_name">ไม่สำคัญ + เร่งด่วน</span></div>
-            <span class="eq-count" id="count-badge-q3">0</span>
-          </div>
-          <div class="eq-card-list" id="eq-list-q3"></div>
-        </div>
-
-        <div class="eisenhower-quadrant q4-zone">
-          <div class="eq-header">
-            <div class="eq-title-wrap"><span class="eq-badge q4-badge">Q4</span><span class="eq-title" data-i18n="q4_name">ไม่สำคัญ + ไม่เร่งด่วน</span></div>
-            <span class="eq-count" id="count-badge-q4">0</span>
-          </div>
-          <div class="eq-card-list" id="eq-list-q4"></div>
-        </div>
-      </div>
+        <div id="insight-urgent-count" style="font-size: 0.9rem; margin-bottom: 6px;"></div>
+        <div id="insight-unassigned-count" style="font-size: 0.9rem;"></div>
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #eee;">
+        <h4 data-i18n="upcoming_deadlines_title" style="margin: 0 0 10px 0;">เดดไลน์ที่ใกล้ถึง (<span id="deadline-range-label"></span>)</h4>
+        <div id="deadline-list"></div>
+      </section>
     </div>
-
-    <!-- ==========================================
-         VIEW 4: ME PAGE
-         ========================================= -->
-    <div id="view-me" class="page-view">
-      <header class="page-header">
-        <div class="header-left">
-          <div class="me-member-switcher">
-            <span style="font-size:0.85rem; color:var(--text-muted);" data-i18n="acting_as">ใช้งานในชื่อ:</span>
-            <select class="form-select select-compact" id="me-user-switcher" style="font-weight:700;"></select>
-          </div>
-          <h1 class="page-title" id="me-heading-name"></h1>
-          <p class="page-subtitle" data-i18n="me_subtitle">ลงเวลาทำงาน งานที่ได้รับมอบหมาย และสัดส่วนความสำคัญส่วนตัว</p>
-        </div>
-        <div class="header-actions">
-          <button class="btn btn-secondary" id="me-quick-add-block">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line></svg>
-            <span data-i18n="btn_add_block">+ ลงเวลา</span>
-          </button>
-          <button class="btn btn-primary" id="me-quick-add-task">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span data-i18n="btn_add_task">+ งาน</span>
-          </button>
-        </div>
-      </header>
-
-      <div class="two-col-layout">
-        <section class="col-card">
-          <div class="section-header-inline">
-            <h2 class="section-title" data-i18n="my_schedule_title">ตารางเวลาของฉัน</h2>
-            <button class="btn-text" id="btn-copy-prev-week" data-i18n="btn_copy_week">คัดลอกสัปดาห์ก่อนหน้า</button>
-          </div>
-          <div class="my-sched-grid" id="me-schedule-display"></div>
-        </section>
-
-        <div class="right-stack">
-          <section class="col-card">
-            <div class="section-header-inline">
-              <h2 class="section-title" data-i18n="my_tasks_title">งานของฉัน</h2>
-              <span class="badge-subtle" id="me-task-count-badge"></span>
-            </div>
-            <div class="deadline-list" id="me-tasks-list"></div>
-          </section>
-
-          <section class="col-card">
-            <div class="section-header-inline">
-              <h2 class="section-title" data-i18n="my_priority_title">สัดส่วนความสำคัญงานของฉัน</h2>
-            </div>
-            <div class="matrix-grid">
-              <div class="matrix-quadrant q-urgent-important">
-                <div class="q-header"><span class="q-tag">Q1</span><span class="q-count" id="me-count-q1">0</span></div>
-                <div class="q-name" data-i18n="q1_name">สำคัญ + เร่งด่วน</div>
-              </div>
-              <div class="matrix-quadrant q-important">
-                <div class="q-header"><span class="q-tag">Q2</span><span class="q-count" id="me-count-q2">0</span></div>
-                <div class="q-name" data-i18n="q2_name">สำคัญ + ไม่เร่งด่วน</div>
-              </div>
-              <div class="matrix-quadrant q-urgent">
-                <div class="q-header"><span class="q-tag">Q3</span><span class="q-count" id="me-count-q3">0</span></div>
-                <div class="q-name" data-i18n="q3_name">ไม่สำคัญ + เร่งด่วน</div>
-              </div>
-              <div class="matrix-quadrant q-backlog">
-                <div class="q-header"><span class="q-tag">Q4</span><span class="q-count" id="me-count-q4">0</span></div>
-                <div class="q-name" data-i18n="q4_name">ไม่สำคัญ + ไม่เร่งด่วน</div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-    </div>
-
   </main>
 
-  <!-- Bottom Navigation (Mobile) -->
-  <nav class="mobile-nav">
-    <button class="mob-item active" data-view="overview">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-      <span data-i18n="nav_overview">ภาพรวม</span>
-    </button>
-    <button class="mob-item" data-view="schedule">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line></svg>
-      <span data-i18n="nav_schedule">ตาราง</span>
-    </button>
-    <button class="mob-item" data-view="matrix">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
-      <span data-i18n="nav_matrix">แมทริกซ์</span>
-    </button>
-    <button class="mob-item" data-view="me">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-      <span data-i18n="nav_me">ของฉัน</span>
-    </button>
-  </nav>
-
-  <!-- Backdrop -->
-  <div class="overlay" id="overlay"></div>
-
-  <!-- MODAL: Team Settings (Manage Members, Active/Inactive) -->
-  <div class="modal modal-md" id="team-settings-modal">
-    <div class="modal-header">
-      <div>
-        <h3 class="modal-title" data-i18n="team_settings_title">ตั้งค่าทีมและสมาชิก</h3>
-        <p class="modal-caption" data-i18n="team_settings_desc">จัดการสมาชิกทีม สถานะใช้งาน และขนาดของทีม</p>
+  <!-- หน้า 2: SCHEDULE -->
+  <main id="view-schedule" class="page-view" style="display: none; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1 data-i18n="sched_page_title" style="margin: 0;">ตารางการทำงาน</h1>
+      <div style="display: flex; gap: 8px;">
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-sched-scope-team" class="pill-btn active" data-i18n="scope_team">ทีม</button>
+          <button id="btn-sched-scope-person" class="pill-btn" data-i18n="scope_person">รายบุคคล</button>
+        </div>
+        <select id="sched-person-select" style="display: none; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-sched-mode-overview" class="pill-btn active" data-i18n="mode_overview">ภาพรวม</button>
+          <button id="btn-sched-mode-detailed" class="pill-btn" data-i18n="mode_detailed">ละเอียด</button>
+        </div>
+        <div id="sched-range-control" class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-sched-1w" class="pill-btn" data-i18n="btn_1week">1 สัปดาห์</button>
+          <button id="btn-sched-2w" class="pill-btn active" data-i18n="btn_2weeks">2 สัปดาห์</button>
+        </div>
+        <div id="sched-day-control" style="display: none; gap: 4px;">
+          <button id="btn-sched-prev-day" class="pill-btn">◀</button>
+          <select id="sched-single-day-select" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+          <button id="btn-sched-next-day" class="pill-btn">▶</button>
+        </div>
       </div>
-      <button class="btn-close" id="close-team-settings">&times;</button>
     </div>
-    <div class="modal-body">
-      <!-- Add member form -->
-      <form id="form-add-member" style="display:flex; gap:8px; margin-bottom:18px;">
-        <input type="text" class="form-input" id="input-new-member-name" placeholder="ชื่อสมาชิกใหม่..." required style="flex:1;" />
-        <button type="submit" class="btn btn-primary" data-i18n="btn_add_member">+ เพิ่มสมาชิก</button>
-      </form>
+    <div id="sched-view-caption" style="color: #666; margin-bottom: 14px; font-size: 0.9rem;"></div>
+    <div id="schedule-viewport-container"></div>
+  </main>
 
-      <!-- Member list table -->
-      <div style="max-height:300px; overflow-y:auto; border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-        <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
-          <thead>
-            <tr style="background:#F8F8F7; border-bottom:1px solid var(--border-subtle); text-align:left;">
-              <th style="padding:8px 12px;" data-i18n="th_member_name">ชื่อสมาชิก</th>
-              <th style="padding:8px 12px; width:120px;" data-i18n="th_status">สถานะ</th>
-              <th style="padding:8px 12px; width:80px; text-align:right;" data-i18n="th_actions">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="team-settings-member-list"></tbody>
-        </table>
+  <!-- หน้า 3: MATRIX -->
+  <main id="view-matrix" class="page-view" style="display: none; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <h1 data-i18n="matrix_page_title" style="margin: 0 0 4px 0;">แมทริกซ์จัดลำดับความสำคัญ</h1>
+        <p data-i18n="matrix_page_desc" style="margin: 0; color: #666; font-size: 0.9rem;"></p>
       </div>
+      <div style="display: flex; gap: 8px;">
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="mat-btn-team" class="pill-btn active" data-i18n="scope_team">ทีม</button>
+          <button id="mat-btn-indiv" class="pill-btn" data-i18n="scope_person">รายบุคคล</button>
+        </div>
+        <select id="mat-person-select" style="display: none; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+      </div>
+    </div>
+    <div style="display: flex; gap: 16px; margin-bottom: 16px; font-size: 0.9rem;">
+      <span>Q1: <b id="mat-sum-q1">0</b></span>
+      <span>Q2: <b id="mat-sum-q2">0</b></span>
+      <span>Q3: <b id="mat-sum-q3">0</b></span>
+      <span>Q4: <b id="mat-sum-q4">0</b></span>
+    </div>
+    <div id="mat-factual-insights" style="margin-bottom: 20px;"></div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="background: #ffebee; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q1: สำคัญ + เร่งด่วน</h4>
+          <span id="count-badge-q1" style="background: #c62828; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q1"></div>
+      </div>
+      <div style="background: #e8f5e9; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q2: สำคัญ + ไม่เร่งด่วน</h4>
+          <span id="count-badge-q2" style="background: #2e7d32; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q2"></div>
+      </div>
+      <div style="background: #fff8e1; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q3: ไม่สำคัญ + เร่งด่วน</h4>
+          <span id="count-badge-q3" style="background: #f57f17; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q3"></div>
+      </div>
+      <div style="background: #f5f5f5; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q4: ไม่สำคัญ + ไม่เร่งด่วน</h4>
+          <span id="count-badge-q4" style="background: #757575; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q4"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- หน้า 4: ME PAGE -->
+  <main id="view-me" class="page-view" style="display: none; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <h1 style="margin: 0 0 4px 0;"><span data-i18n="nav_me">ของฉัน</span>: <span id="me-heading-name">เอ</span></h1>
+        <p data-i18n="me_subtitle" style="margin: 0; color: #666; font-size: 0.9rem;"></p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label style="font-size: 0.9rem;" data-i18n="acting_as">ใช้งานในชื่อ:</label>
+        <select id="me-user-switcher" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button id="me-quick-add-block" class="btn" style="padding: 8px 14px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_add_block">+ ลงเวลา</button>
+      <button id="me-quick-add-task" class="btn" style="padding: 8px 14px; background: #eee; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_add_task">+ งาน</button>
+      <button id="btn-copy-prev-week" class="btn" style="padding: 8px 14px; background: #eee; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_copy_week">คัดลอกสัปดาห์ก่อนหน้า</button>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <h3 data-i18n="my_schedule_title" style="margin-top: 0;">ตารางเวลาของฉัน</h3>
+        <div id="me-schedule-display"></div>
+      </section>
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 data-i18n="my_tasks_title" style="margin: 0;">งานของฉัน</h3>
+          <span id="me-task-count-badge" style="background: #eee; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;"></span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; font-size: 0.85rem;">
+          <span>Q1: <b id="me-count-q1">0</b></span>
+          <span>Q2: <b id="me-count-q2">0</b></span>
+          <span>Q3: <b id="me-count-q3">0</b></span>
+          <span>Q4: <b id="me-count-q4">0</b></span>
+        </div>
+        <div id="me-tasks-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Modals & Drawers -->
+  <div id="overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 900;"></div>
+
+  <!-- Modal: ลงเวลา (Block) -->
+  <div id="block-input-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 360px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 id="block-modal-heading" style="margin-top: 0;">ลงเวลา</h3>
+    <form id="form-schedule-block">
+      <input type="hidden" id="input-block-id">
+      <input type="hidden" id="input-block-member-id">
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_date">วันที่</label>
+        <select id="input-block-date" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+      </div>
+      <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <div style="flex: 1;">
+          <label data-i18n="label_start_time">เวลาเริ่ม</label>
+          <input type="time" id="input-block-start" style="width: 100%; padding: 6px; margin-top: 4px;" required>
+        </div>
+        <div style="flex: 1;">
+          <label data-i18n="label_end_time">เวลาสิ้นสุด</label>
+          <input type="time" id="input-block-end" style="width: 100%; padding: 6px; margin-top: 4px;" required>
+        </div>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_status">สถานะ</label>
+        <div id="block-type-selector" style="display: flex; gap: 6px; margin-top: 4px;">
+          <button type="button" class="btn-type-pill active" data-type="available" style="flex: 1; padding: 6px;" data-i18n="status_available">ว่าง</button>
+          <button type="button" class="btn-type-pill" data-type="work" style="flex: 1; padding: 6px;" data-i18n="status_work">ทำงาน</button>
+          <button type="button" class="btn-type-pill" data-type="busy" style="flex: 1; padding: 6px;" data-i18n="status_busy">ติดธุระ</button>
+        </div>
+      </div>
+      <div id="block-work-section" style="display: none; margin-bottom: 10px;">
+        <label data-i18n="label_linked_task">ผูกกับงาน</label>
+        <select id="input-block-task-id" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+        <button type="button" id="btn-create-task-inline" style="background: none; border: none; color: blue; cursor: pointer; font-size: 0.8rem; margin-top: 4px;" data-i18n="btn_create_task_inline">+ สร้างงานใหม่</button>
+      </div>
+      <div id="block-busy-section" style="display: none; margin-bottom: 10px;">
+        <label data-i18n="label_short_reason">ระบุเหตุผลสั้น ๆ</label>
+        <input type="text" id="input-block-reason" style="width: 100%; padding: 6px; margin-top: 4px;">
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+        <button type="button" id="btn-delete-block" style="display: none; color: red; background: none; border: none; cursor: pointer;" data-i18n="btn_clear_block">ลบ</button>
+        <div style="display: flex; gap: 8px; margin-left: auto;">
+          <button type="button" id="close-block-modal" class="btn">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary" style="background: #111; color: #fff; border: none; padding: 6px 14px; border-radius: 4px;" data-i18n="btn_save_block">บันทึก</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: สร้างงาน (Task) -->
+  <div id="add-task-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 360px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 data-i18n="new_task_title" style="margin-top: 0;">สร้างงานใหม่</h3>
+    <form id="form-add-task">
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_task_title">ชื่องาน</label>
+        <input type="text" id="input-task-title" style="width: 100%; padding: 6px; margin-top: 4px;" required>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_assignee">ผู้รับผิดชอบ</label>
+        <select id="input-task-owner" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_deadline_date">วันที่ส่ง (Deadline)</label>
+        <select id="input-task-deadline-date" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+        <button type="button" id="btn-toggle-deadline-time" style="background: none; border: none; color: blue; cursor: pointer; font-size: 0.8rem; margin-top: 4px;" data-i18n="btn_add_time">+ เพิ่มเวลา</button>
+        <div id="deadline-time-container" style="display: none; margin-top: 6px;">
+          <input type="time" id="input-task-deadline-time" style="width: 100%; padding: 6px;">
+        </div>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_is_important">งานนี้สำคัญหรือไม่?</label>
+        <div id="group-is-important" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px;">
+          <button type="button" class="pill active" data-val="true" style="flex: 1; padding: 6px;" data-i18n="choice_yes">ใช่</button>
+          <button type="button" class="pill" data-val="false" style="flex: 1; padding: 6px;" data-i18n="choice_no">ไม่ใช่</button>
+        </div>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label data-i18n="label_is_urgent">งานนี้เร่งด่วนหรือไม่?</label>
+        <div id="group-is-urgent" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px;">
+          <button type="button" class="pill active" data-val="true" style="flex: 1; padding: 6px;" data-i18n="choice_yes">ใช่</button>
+          <button type="button" class="pill" data-val="false" style="flex: 1; padding: 6px;" data-i18n="choice_no">ไม่ใช่</button>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" id="close-add-task" class="btn">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary" style="background: #111; color: #fff; border: none; padding: 6px 14px; border-radius: 4px;" data-i18n="btn_save_task">บันทึกงาน</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: ค้นหาเวลาว่าง (Find a Time) -->
+  <div id="find-time-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 400px; max-height: 80vh; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 data-i18n="find_time_modal_title" style="margin-top: 0;">ค้นหาเวลาว่างพร้อมกัน</h3>
+    <p data-i18n="find_time_modal_desc" style="font-size: 0.85rem; color: #666;"></p>
+    <div style="margin-bottom: 12px;">
+      <label data-i18n="label_duration">ระยะเวลาที่ต้องการ</label>
+      <div id="duration-selector" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px;">
+        <button type="button" class="pill" data-minutes="60">1 ชม.</button>
+        <button type="button" class="pill active" data-minutes="120">2 ชม.</button>
+        <button type="button" class="pill" data-minutes="180">3 ชม.</button>
+      </div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <label data-i18n="label_people">ผู้เข้าร่วม</label>
+      <div id="people-scope-selector" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px; margin-bottom: 8px;">
+        <button type="button" class="pill active" data-scope="everyone" id="pill-everyone-label" data-i18n="scope_everyone">ทุกคน</button>
+        <button type="button" class="pill" data-scope="select" data-i18n="scope_select_members">เลือกบางคน</button>
+      </div>
+      <div id="person-picker" style="display: none; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 120px; overflow-y: auto; background: #fafafa; padding: 8px; border-radius: 6px;"></div>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <label data-i18n="label_min_people">จำนวนคนที่ต้องว่างอย่างน้อย</label>
+      <select id="min-people-select" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+    </div>
+    <button id="btn-run-find" class="btn btn-primary" style="width: 100%; padding: 8px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_find_matches">ค้นหาช่วงเวลา</button>
+    <div id="find-results" style="display: none; margin-top: 16px;">
+      <h4 data-i18n="results_heading" style="margin: 0 0 8px 0;">ผลการค้นหา</h4>
+      <div id="result-items" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </div>
+    <div style="text-align: right; margin-top: 16px;">
+      <button id="close-find-modal" class="btn">ปิด</button>
     </div>
   </div>
 
-  <!-- MODAL: Schedule Block Input / Edit -->
-  <div class="modal modal-sm" id="block-input-modal">
-    <div class="modal-header">
-      <div>
-        <h3 class="modal-title" id="block-modal-heading"></h3>
-        <p class="modal-caption" data-i18n="block_modal_desc">ระบุเวลาละเอียดระดับนาที</p>
-      </div>
-      <button class="btn-close" id="close-block-modal">&times;</button>
+  <!-- Modal: ตั้งค่าทีม (Team Settings) -->
+  <div id="team-settings-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 440px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 data-i18n="team_settings_title" style="margin-top: 0;">ตั้งค่าทีมและสมาชิก</h3>
+    <form id="form-add-member" style="display: flex; gap: 8px; margin-bottom: 16px;">
+      <input type="text" id="input-new-member-name" placeholder="ชื่อสมาชิกใหม่..." style="flex: 1; padding: 6px 10px;" required>
+      <button type="submit" class="btn" style="background: #111; color: #fff; border: none; padding: 6px 12px; border-radius: 4px;" data-i18n="btn_add_member">+ เพิ่ม</button>
+    </form>
+    <div style="max-height: 240px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; margin-bottom: 16px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tbody id="team-settings-member-list"></tbody>
+      </table>
     </div>
-    <div class="modal-body">
-      <form id="form-schedule-block">
-        <input type="hidden" id="input-block-id" />
-        <input type="hidden" id="input-block-member-id" />
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="label_date">วันที่</label>
-          <select class="form-select" id="input-block-date" required></select>
-        </div>
-
-        <div class="time-range-row">
-          <div class="form-group" style="flex:1;">
-            <label class="form-label" data-i18n="label_start_time">เวลาเริ่ม [HH:mm]</label>
-            <input type="time" class="form-input" id="input-block-start" value="09:00" required />
-          </div>
-          <div class="form-group" style="flex:1;">
-            <label class="form-label" data-i18n="label_end_time">เวลาสิ้นสุด [HH:mm]</label>
-            <input type="time" class="form-input" id="input-block-end" value="11:00" required />
-          </div>
-        </div>
-
-        <div class="duration-shortcuts">
-          <span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="label_shortcuts">ปุ่มลัด:</span>
-          <button type="button" class="btn-chip" onclick="adjustBlockDuration(30)">+30 นาที</button>
-          <button type="button" class="btn-chip" onclick="adjustBlockDuration(60)">+1 ชม.</button>
-          <button type="button" class="btn-chip" onclick="adjustBlockDuration(120)">+2 ชม.</button>
-        </div>
-
-        <div class="form-group" style="margin-top:14px;">
-          <label class="form-label" data-i18n="label_status">สถานะ</label>
-          <div class="type-pill-selector" id="block-type-selector">
-            <button type="button" class="btn-type-pill active" data-type="available" data-i18n="status_available">ว่าง</button>
-            <button type="button" class="btn-type-pill" data-type="work" data-i18n="status_work">ทำงาน</button>
-            <button type="button" class="btn-type-pill" data-type="busy" data-i18n="status_busy">ติดธุระ</button>
-          </div>
-        </div>
-
-        <div id="block-work-section" style="display:none;" class="sub-form-box">
-          <div class="form-group">
-            <label class="form-label" data-i18n="label_linked_task">ผูกกับงาน</label>
-            <select class="form-select" id="input-block-task-id"></select>
-          </div>
-          <div style="text-align:right;">
-            <button type="button" class="btn-text" id="btn-create-task-inline" data-i18n="btn_create_task_inline">+ สร้างงานใหม่</button>
-          </div>
-        </div>
-
-        <div id="block-busy-section" style="display:none;" class="sub-form-box">
-          <div class="form-group">
-            <label class="form-label" data-i18n="label_short_reason">ระบุเหตุผลสั้น ๆ</label>
-            <input type="text" class="form-input" id="input-block-reason" placeholder="เช่น ติดเรียน, ธุระส่วนตัว" />
-          </div>
-        </div>
-
-        <div class="modal-footer-actions">
-          <button type="button" class="btn btn-secondary btn-danger-outline" id="btn-delete-block" style="display:none;" data-i18n="btn_clear_block">ลบบล็อกนี้</button>
-          <button type="submit" class="btn btn-primary" style="flex:1;" data-i18n="btn_save_block">บันทึกบล็อกเวลา</button>
-        </div>
-      </form>
+    <div style="text-align: right;">
+      <button id="close-team-settings" class="btn">ปิด</button>
     </div>
   </div>
 
-  <!-- MODAL: Add / Edit Task -->
-  <div class="modal modal-sm" id="add-task-modal">
-    <div class="modal-header">
-      <div>
-        <h3 class="modal-title" data-i18n="new_task_title">สร้างงานใหม่</h3>
-        <p class="modal-caption" data-i18n="new_task_desc">กำหนดเดดไลน์และระดับความสำคัญ</p>
-      </div>
-      <button class="btn-close" id="close-add-task">&times;</button>
+  <!-- Side Drawer -->
+  <aside id="side-drawer" class="drawer" style="position: fixed; top: 0; right: -400px; width: 360px; height: 100vh; background: #fff; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 1000; padding: 24px; box-sizing: border-box; transition: right 0.3s ease; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span id="drawer-meta" style="font-size: 0.75rem; color: #888; letter-spacing: 1px;"></span>
+      <button id="close-drawer" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">✕</button>
     </div>
-    <div class="modal-body">
-      <form id="form-add-task">
-        <div class="form-group">
-          <label class="form-label" data-i18n="label_task_title">ชื่องาน</label>
-          <input type="text" class="form-input" id="input-task-title" placeholder="เช่น รายงานประจำสัปดาห์" required />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="label_assignee">ผู้รับผิดชอบ</label>
-          <select class="form-select" id="input-task-owner" required></select>
-        </div>
-
-        <div class="form-group">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <label class="form-label" style="margin-bottom:0;" data-i18n="label_deadline_date">วันที่ส่ง (Deadline)</label>
-            <button type="button" class="btn-text" id="btn-toggle-deadline-time" data-i18n="btn_add_time">+ เพิ่มเวลา</button>
-          </div>
-          <select class="form-select" id="input-task-deadline-date" required></select>
-        </div>
-
-        <div class="form-group" id="deadline-time-container" style="display:none;">
-          <label class="form-label" data-i18n="label_deadline_time">เวลาส่ง [HH:mm]</label>
-          <input type="time" class="form-input" id="input-task-deadline-time" value="17:00" />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="label_is_important">งานนี้สำคัญหรือไม่?</label>
-          <div class="pill-group" id="group-is-important">
-            <button type="button" class="pill active" data-val="true" data-i18n="choice_yes">สำคัญ</button>
-            <button type="button" class="pill" data-val="false" data-i18n="choice_no">ไม่สำคัญ</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="label_is_urgent">งานนี้เร่งด่วนหรือไม่?</label>
-          <div class="pill-group" id="group-is-urgent">
-            <button type="button" class="pill active" data-val="true" data-i18n="choice_yes">เร่งด่วน</button>
-            <button type="button" class="pill" data-val="false" data-i18n="choice_no">ไม่เร่งด่วน</button>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;" data-i18n="btn_save_task">บันทึกงาน</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: Find a Time -->
-  <div class="modal" id="find-time-modal">
-    <div class="modal-header">
-      <div>
-        <h3 class="modal-title" data-i18n="find_time_modal_title">ค้นหาเวลาว่างพร้อมกัน</h3>
-        <p class="modal-caption" data-i18n="find_time_modal_desc">คำนวณจากตารางเวลาจริงของสมาชิกที่เปิดใช้งาน</p>
-      </div>
-      <button class="btn-close" id="close-find-modal">&times;</button>
-    </div>
-    
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" data-i18n="label_duration">ระยะเวลาที่ต้องการ</label>
-        <div class="pill-group" id="duration-selector">
-          <button class="pill" data-minutes="30">30 นาที</button>
-          <button class="pill" data-minutes="60">1 ชั่วโมง</button>
-          <button class="pill active" data-minutes="120">2 ชั่วโมง</button>
-          <button class="pill" data-minutes="180">3 ชั่วโมง</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" data-i18n="label_people">ผู้เข้าร่วม</label>
-        <div class="pill-group" id="people-scope-selector">
-          <button class="pill active" data-scope="everyone" id="pill-everyone-label"></button>
-          <button class="pill" data-scope="select" data-i18n="scope_select_members">เลือกบางคน</button>
-        </div>
-        <div class="person-checkbox-grid" id="person-picker" style="display: none;"></div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" data-i18n="label_min_people">จำนวนคนที่ต้องว่างอย่างน้อย</label>
-        <div class="select-wrapper">
-          <select class="form-select" id="min-people-select"></select>
-        </div>
-      </div>
-
-      <button class="btn btn-primary btn-block" id="btn-run-find" data-i18n="btn_find_matches">ค้นหาช่วงเวลา</button>
-
-      <div class="find-results" id="find-results" style="display: none;">
-        <h4 class="results-heading" data-i18n="results_heading">ผลการค้นหา</h4>
-        <div class="result-list" id="result-items"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- DRAWER: Detail Inspector -->
-  <aside class="drawer" id="side-drawer">
-    <div class="drawer-header">
-      <div>
-        <span class="drawer-meta" id="drawer-meta" data-i18n="drawer_meta">ตรวจสอบรายละเอียด</span>
-        <h3 class="drawer-title" id="drawer-title"></h3>
-      </div>
-      <button class="btn-close" id="close-drawer">&times;</button>
-    </div>
-    <div class="drawer-body" id="drawer-body"></div>
+    <h2 id="drawer-title" style="margin: 0 0 16px 0; font-size: 1.2rem;"></h2>
+    <div id="drawer-body"></div>
   </aside>
 
-  <script src="./script.js"></script>
-  <!-- ปุ่มเข้าสู่ระบบ Google -->
-  <div id="auth-container" style="position: fixed; top: 12px; right: 12px; z-index: 9999;">
-    <button id="btn-login" style="padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-weight: 500; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
-      🔑 เข้าสู่ระบบด้วย Google
-    </button>
-    <div id="user-info" style="display: none; align-items: center; gap: 8px; background: #fff; padding: 4px 12px; border-radius: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
-      <img id="user-avatar" src="" style="width: 28px; height: 28px; border-radius: 50%;">
-      <span id="user-name" style="font-size: 13px; font-weight: 600;"></span>
-      <button id="btn-logout" style="padding: 2px 8px; border-radius: 6px; border: none; background: #eee; cursor: pointer; font-size: 11px;">ออก</button>
-    </div>
-  </div>
-
-  <!-- โหลด Firebase SDK -->
+  <!-- 1. โหลด Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+  <!-- 2. โหลด JavaScript การทำงานหลัก -->
+  <script src="script.js"></script>
 </body>
 </html>
