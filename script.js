@@ -196,6 +196,63 @@ const I18N = {
   }
 };
 
+/* ==========================================================================
+   FIREBASE / FIRESTORE CONNECTION
+   ==========================================================================
+   1. Create a project at https://console.firebase.google.com
+   2. Build a Firestore database (Native mode) — Build > Firestore Database > Create database
+   3. Set the security rules (see firestore.rules alongside this file)
+   4. Project settings (gear icon) > General > Your apps > Web app > copy the config below
+   5. (First time only) open seed.html once in a browser to create the demo team members
+   ========================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCq4rm_4AZ8lTmKVCUIM93dxnyHJm0rSxw",
+  authDomain: "ff-time-d8ab5.firebaseapp.com",
+  projectId: "ff-time-d8ab5",
+  storageBucket: "ff-time-d8ab5.firebasestorage.app",
+  messagingSenderId: "457507578708",
+  appId: "1:457507578708:web:64d713054ded83fb715ec1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const membersCol = db.collection("members");
+const tasksCol = db.collection("tasks");
+const blocksCol = db.collection("blocks");
+const blockNotesCol = db.collection("block_notes");
+
+/* ---- Load everything from Firestore into APP_DATA ---- */
+async function loadAllData() {
+  try {
+    const [membersSnap, tasksSnap, blocksSnap, notesSnap] = await Promise.all([
+    membersCol.orderBy("id").get(),
+    tasksCol.get(),
+    blocksCol.get(),
+    blockNotesCol.orderBy("createdAt").get()]
+    );
+
+    APP_DATA.members = membersSnap.docs.map((d) => d.data());
+    APP_DATA.tasks = tasksSnap.docs.map((d) => d.data());
+    APP_DATA.blocks = blocksSnap.docs.map((d) => d.data());
+
+    APP_DATA.blockNotes = {};
+    notesSnap.docs.forEach((d) => {
+      const n = d.data();
+      if (!APP_DATA.blockNotes[n.blockId]) APP_DATA.blockNotes[n.blockId] = [];
+      APP_DATA.blockNotes[n.blockId].push(`${n.author || "User"}: ${n.text}`);
+    });
+
+    if (!APP_DATA.members.find((m) => m.id === APP_DATA.currentUserId)) {
+      APP_DATA.currentUserId = APP_DATA.members.length > 0 ? APP_DATA.members[0].id : null;
+    }
+    APP_DATA.scheduleSelectedPersonId = APP_DATA.currentUserId;
+    APP_DATA.matrixSelectedMemberId = APP_DATA.currentUserId;
+  } catch (err) {
+    console.error("Failed to load data from Firestore:", err);
+    alert("โหลดข้อมูลจากฐานข้อมูลไม่สำเร็จ กรุณาตรวจสอบ firebaseConfig และ Firestore security rules แล้วดู console สำหรับรายละเอียด");
+  }
+}
+
 let currentLang = "th";
 function t(key, ...args) {
   const dict = I18N[currentLang] || I18N.th;
@@ -252,60 +309,14 @@ const APP_DATA = {
 
 
   // PEOPLE Collection: Dynamic Team with Active flag
-  members: [
-  { id: 1, name: "เอ", active: true },
-  { id: 2, name: "โบ", active: true },
-  { id: 3, name: "ฟ้า", active: true },
-  { id: 4, name: "กร", active: true },
-  { id: 5, name: "อุ้ม", active: true },
-  { id: 6, name: "แพร", active: true },
-  { id: 7, name: "แม็ก", active: true },
-  { id: 8, name: "นิ", active: true },
-  { id: 9, name: "ปิ่น", active: true },
-  { id: 10, name: "จ๊อบ", active: true }],
+  // Loaded from Supabase at startup by loadAllData() — see below.
+  members: [],
 
+  tasks: [],
 
-  tasks: [
-  { id: "task-1", title: "Community Report", ownerId: 3, deadlineDate: "2026-09-19", deadlineTime: "17:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Waiting on regional survey results" },
-  { id: "task-2", title: "Budget Proposal", ownerId: 2, deadlineDate: "2026-09-20", deadlineTime: "12:00", quadrant: "q1", urgent: true, status: "Review", note: "Annual operational budget submission" },
-  { id: "task-3", title: "Event Poster Draft", ownerId: 5, deadlineDate: "2026-09-21", deadlineTime: null, quadrant: "q3", urgent: true, status: "Drafting", note: "Print and online formats" },
-  { id: "task-4", title: "Sponsor Outreach", ownerId: 7, deadlineDate: "2026-09-24", deadlineTime: "15:30", quadrant: "q2", urgent: false, status: "Outreach", note: "Pitch deck distribution to partners" },
-  { id: "task-5", title: "Backlog Grooming", ownerId: 1, deadlineDate: "2026-09-28", deadlineTime: null, quadrant: "q4", urgent: false, status: "Planned", note: "Review unscheduled tasks" },
-  { id: "task-6", title: "Research Synthesis", ownerId: 4, deadlineDate: "2026-09-30", deadlineTime: null, quadrant: "q2", urgent: false, status: "Writing", note: "Literature review chapter" },
-  { id: "task-7", title: "Safety Protocol Review", ownerId: 3, deadlineDate: "2026-09-20", deadlineTime: "10:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Activity ground compliance" },
-  { id: "task-8", title: "Permit Clearance", ownerId: 3, deadlineDate: "2026-09-22", deadlineTime: null, quadrant: "q1", urgent: true, status: "Pending", note: "District office endorsement" },
-  { id: "task-9", title: "Speaker Briefing Deck", ownerId: 3, deadlineDate: "2026-09-23", deadlineTime: "14:00", quadrant: "q1", urgent: true, status: "Drafting", note: "Guideline deck for guest speakers" },
-  { id: "task-10", title: "Volunteer Alignment Call", ownerId: 8, deadlineDate: "2026-09-22", deadlineTime: "19:00", quadrant: "q3", urgent: true, status: "Scheduled", note: "Coordinate 15 logistics volunteers" }],
+  blocks: [],
 
-
-  blocks: [
-  { id: "b1", memberId: 1, dateKey: "2026-09-18", start: "08:30", end: "12:00", type: "available" },
-  { id: "b2", memberId: 1, dateKey: "2026-09-18", start: "13:00", end: "17:00", type: "available" },
-  { id: "b3", memberId: 1, dateKey: "2026-09-18", start: "18:00", end: "20:30", type: "busy", reason: "Family dinner" },
-
-  { id: "b4", memberId: 2, dateKey: "2026-09-18", start: "09:40", end: "11:10", type: "work", taskId: "task-2" },
-  { id: "b5", memberId: 2, dateKey: "2026-09-18", start: "13:30", end: "17:00", type: "available" },
-
-  { id: "b6", memberId: 3, dateKey: "2026-09-18", start: "09:00", end: "12:00", type: "busy", reason: "Faculty Seminar" },
-  { id: "b7", memberId: 3, dateKey: "2026-09-18", start: "13:15", end: "14:45", type: "work", taskId: "task-1" },
-  { id: "b8", memberId: 3, dateKey: "2026-09-18", start: "15:00", end: "18:00", type: "available" },
-
-  { id: "b9", memberId: 4, dateKey: "2026-09-18", start: "08:00", end: "16:00", type: "available" },
-
-  { id: "b10", memberId: 5, dateKey: "2026-09-18", start: "09:00", end: "13:00", type: "available" },
-  { id: "b11", memberId: 5, dateKey: "2026-09-18", start: "14:00", end: "16:00", type: "work", taskId: "task-3" },
-
-  { id: "b12", memberId: 7, dateKey: "2026-09-18", start: "10:00", end: "15:30", type: "available" },
-  { id: "b13", memberId: 7, dateKey: "2026-09-18", start: "16:20", end: "17:05", type: "work", taskId: "task-4" },
-
-  { id: "b14", memberId: 8, dateKey: "2026-09-18", start: "08:30", end: "17:00", type: "available" },
-  { id: "b15", memberId: 9, dateKey: "2026-09-18", start: "09:00", end: "18:00", type: "available" },
-  { id: "b16", memberId: 10, dateKey: "2026-09-18", start: "13:00", end: "18:00", type: "busy", reason: "Field trip" }],
-
-
-  blockNotes: {
-    "b3": ["President: Family dinner noted."]
-  }
+  blockNotes: {}
 };
 
 /* ==========================================================================
@@ -388,7 +399,8 @@ function sortTasksByDeadline(a, b) {
 /* ==========================================================================
    APP INITIALIZATION & TRANSLATION ENGINE
    ========================================================================== */
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadAllData();
   setupNavigation();
   setupGlobalControls();
   initPersonPickers();
@@ -1081,22 +1093,30 @@ function renderTeamSettingsList() {
   `).join("");
 }
 
-window.renameMember = function (memberId) {
+window.renameMember = async function (memberId) {
   const member = APP_DATA.members.find((m) => m.id === memberId);
   if (!member) return;
   const newName = prompt(t("th_member_name"), member.name);
   if (newName && newName.trim()) {
-    member.name = newName.trim();
+    const trimmed = newName.trim();
+    try {
+      await membersCol.doc(String(memberId)).update({ name: trimmed });
+    } catch (err) { alert("แก้ไขชื่อไม่สำเร็จ: " + err.message); return; }
+    member.name = trimmed;
     renderTeamSettingsList();
     initPersonPickers();
     refreshAllActiveViews();
   }
 };
 
-window.toggleMemberActive = function (memberId) {
+window.toggleMemberActive = async function (memberId) {
   const member = APP_DATA.members.find((m) => m.id === memberId);
   if (!member) return;
-  member.active = !member.active;
+  const newActive = !member.active;
+  try {
+    await membersCol.doc(String(memberId)).update({ active: newActive });
+  } catch (err) { alert("เปลี่ยนสถานะไม่สำเร็จ: " + err.message); return; }
+  member.active = newActive;
   renderTeamSettingsList();
   initPersonPickers();
   refreshAllActiveViews();
@@ -1223,13 +1243,24 @@ function openBlockDetailInspector(blockId) {
   drawer.classList.add("active");
 }
 
-window.submitBlockNote = function (blockId) {
+window.submitBlockNote = async function (blockId) {
   const input = document.getElementById("input-drawer-note");
   const val = input.value.trim();
   if (!val) return;
-  if (!APP_DATA.blockNotes[blockId]) APP_DATA.blockNotes[blockId] = [];
   const currentMember = APP_DATA.members.find((m) => m.id === APP_DATA.currentUserId);
-  APP_DATA.blockNotes[blockId].push(`${currentMember ? currentMember.name : 'User'}: ${val}`);
+  const author = currentMember ? currentMember.name : "User";
+
+  try {
+    await blockNotesCol.add({
+      blockId,
+      author,
+      text: val,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) { alert("บันทึกโน้ตไม่สำเร็จ: " + err.message); return; }
+
+  if (!APP_DATA.blockNotes[blockId]) APP_DATA.blockNotes[blockId] = [];
+  APP_DATA.blockNotes[blockId].push(`${author}: ${val}`);
   input.value = "";
   openBlockDetailInspector(blockId);
 };
@@ -1322,14 +1353,19 @@ function setupGlobalControls() {
   document.getElementById("close-team-settings").addEventListener("click", closeAllOverlays);
 
   // Add Member Form
-  document.getElementById("form-add-member").addEventListener("submit", (e) => {
+  document.getElementById("form-add-member").addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("input-new-member-name");
     const name = input.value.trim();
     if (!name) return;
 
     const newId = APP_DATA.members.length > 0 ? Math.max(...APP_DATA.members.map((m) => m.id)) + 1 : 1;
-    APP_DATA.members.push({ id: newId, name, active: true });
+    const newMember = { id: newId, name, active: true };
+    try {
+      await membersCol.doc(String(newId)).set(newMember);
+    } catch (err) { alert("เพิ่มสมาชิกไม่สำเร็จ: " + err.message); return; }
+
+    APP_DATA.members.push(newMember);
     input.value = "";
     renderTeamSettingsList();
     initPersonPickers();
@@ -1439,16 +1475,17 @@ function setupGlobalControls() {
     openModal(taskModal);
   });
 
-  document.getElementById("btn-copy-prev-week").addEventListener("click", () => {
+  document.getElementById("btn-copy-prev-week").addEventListener("click", async () => {
     const memberId = APP_DATA.currentUserId;
     const week1Blocks = APP_DATA.blocks.filter((b) => b.memberId === memberId && APP_DATA.days.find((d) => d.key === b.dateKey)?.in1w);
 
+    const newBlocks = [];
     week1Blocks.forEach((b) => {
       const dayIndex = APP_DATA.days.findIndex((d) => d.key === b.dateKey);
       if (dayIndex !== -1 && dayIndex + 7 < APP_DATA.days.length) {
         const nextWeekKey = APP_DATA.days[dayIndex + 7].key;
-        APP_DATA.blocks.push({
-          id: `b_${Date.now()}_${Math.random()}`,
+        newBlocks.push({
+          id: `b_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           memberId: b.memberId,
           dateKey: nextWeekKey,
           start: b.start,
@@ -1459,12 +1496,22 @@ function setupGlobalControls() {
         });
       }
     });
+
+    if (newBlocks.length > 0) {
+      try {
+        const batch = db.batch();
+        newBlocks.forEach((b) => batch.set(blocksCol.doc(b.id), b));
+        await batch.commit();
+      } catch (err) { alert("คัดลอกไม่สำเร็จ: " + err.message); return; }
+      APP_DATA.blocks.push(...newBlocks);
+    }
+
     refreshAllActiveViews();
     alert("Copied week 1 blocks to week 2.");
   });
 
   // Save Schedule Block Form
-  document.getElementById("form-schedule-block").addEventListener("submit", (e) => {
+  document.getElementById("form-schedule-block").addEventListener("submit", async (e) => {
     e.preventDefault();
     const existingId = document.getElementById("input-block-id").value;
     const memberId = parseInt(document.getElementById("input-block-member-id").value);
@@ -1488,11 +1535,16 @@ function setupGlobalControls() {
       reason: activeType === "busy" ? document.getElementById("input-block-reason").value.trim() || t("status_busy") : null
     };
 
+    const finalId = existingId || `b_${Date.now()}`;
+    try {
+      await blocksCol.doc(finalId).set({ id: finalId, ...blockData });
+    } catch (err) { alert("บันทึกไม่สำเร็จ: " + err.message); return; }
+
     if (existingId) {
       const idx = APP_DATA.blocks.findIndex((b) => b.id === existingId);
       if (idx !== -1) APP_DATA.blocks[idx] = { id: existingId, ...blockData };
     } else {
-      APP_DATA.blocks.push({ id: `b_${Date.now()}`, ...blockData });
+      APP_DATA.blocks.push({ id: finalId, ...blockData });
     }
 
     closeAllOverlays();
@@ -1500,9 +1552,12 @@ function setupGlobalControls() {
   });
 
   // Delete Block
-  document.getElementById("btn-delete-block").addEventListener("click", () => {
+  document.getElementById("btn-delete-block").addEventListener("click", async () => {
     const existingId = document.getElementById("input-block-id").value;
     if (existingId) {
+      try {
+        await blocksCol.doc(existingId).delete();
+      } catch (err) { alert("ลบไม่สำเร็จ: " + err.message); return; }
       APP_DATA.blocks = APP_DATA.blocks.filter((b) => b.id !== existingId);
       closeAllOverlays();
       refreshAllActiveViews();
@@ -1516,7 +1571,7 @@ function setupGlobalControls() {
   });
 
   // Save Task Form
-  document.getElementById("form-add-task").addEventListener("submit", (e) => {
+  document.getElementById("form-add-task").addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = document.getElementById("input-task-title").value.trim();
     const ownerId = parseInt(document.getElementById("input-task-owner").value);
@@ -1530,7 +1585,7 @@ function setupGlobalControls() {
     if (isImportant && !isUrgent) quad = "q2";else
     if (!isImportant && isUrgent) quad = "q3";
 
-    APP_DATA.tasks.unshift({
+    const newTask = {
       id: `task-${Date.now()}`,
       title,
       ownerId,
@@ -1540,7 +1595,13 @@ function setupGlobalControls() {
       urgent: isUrgent,
       status: "In Progress",
       note: ""
-    });
+    };
+
+    try {
+      await tasksCol.doc(newTask.id).set(newTask);
+    } catch (err) { alert("บันทึกงานไม่สำเร็จ: " + err.message); return; }
+
+    APP_DATA.tasks.unshift(newTask);
 
     closeAllOverlays();
     document.getElementById("form-add-task").reset();
