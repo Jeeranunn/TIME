@@ -1,4 +1,6 @@
-// --- Firebase Config & Auth Setup ---
+/* ==========================================================================
+   FIREBASE INITIALIZATION & AUTH SYSTEM
+   ========================================================================== */
 const firebaseConfig = {
   apiKey: "AIzaSyCuraBGP70g64YzTkIknr1mTsY9xQrpjFs",
   authDomain: "time-team-ccc31.firebaseapp.com",
@@ -9,46 +11,53 @@ const firebaseConfig = {
   measurementId: "G-8S1Y7V9X2T"
 };
 
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-const auth = firebase.auth();
-const provider = new firebase.auth.GoogleAuthProvider();
+let auth = null;
+let provider = null;
 
-window.addEventListener("DOMContentLoaded", () => {
+if (typeof firebase !== "undefined") {
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  auth = firebase.auth();
+  provider = new firebase.auth.GoogleAuthProvider();
+}
+
+function initAuthHandlers() {
   const btnLogin = document.getElementById("btn-login");
   const btnLogout = document.getElementById("btn-logout");
   const userInfo = document.getElementById("user-info");
   const userName = document.getElementById("user-name");
   const userAvatar = document.getElementById("user-avatar");
 
-  if (btnLogin) {
-    btnLogin.addEventListener("click", () => {
+  if (btnLogin && auth) {
+    btnLogin.onclick = () => {
       auth.signInWithPopup(provider).catch((error) => {
         alert("เข้าสู่ระบบไม่สำเร็จ: " + error.message);
       });
-    });
+    };
   }
 
-  if (btnLogout) {
-    btnLogout.addEventListener("click", () => {
+  if (btnLogout && auth) {
+    btnLogout.onclick = () => {
       auth.signOut();
-    });
+    };
   }
 
-  auth.onAuthStateChanged((user) => {
-    if (user) {
-      if (btnLogin) btnLogin.style.display = "none";
-      if (userInfo) userInfo.style.display = "flex";
-      if (userName) userName.textContent = user.displayName;
-      if (userAvatar) userAvatar.src = user.photoURL;
-    } else {
-      if (btnLogin) btnLogin.style.display = "block";
-      if (userInfo) userInfo.style.display = "none";
-    }
-  });
-});
-// ------------------------------------
+  if (auth) {
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        if (btnLogin) btnLogin.style.display = "none";
+        if (userInfo) userInfo.style.display = "flex";
+        if (userName) userName.textContent = user.displayName;
+        if (userAvatar) userAvatar.src = user.photoURL;
+      } else {
+        if (btnLogin) btnLogin.style.display = "block";
+        if (userInfo) userInfo.style.display = "none";
+      }
+    });
+  }
+}
+
 /* ==========================================================================
    TRANSLATION DICTIONARY (THAI / ENGLISH)
    ========================================================================== */
@@ -256,14 +265,14 @@ function t(key, ...args) {
 }
 
 /* ==========================================================================
-   CENTRAL DATA ARCHITECTURE (DYNAMIC TEAM & SHARED DATA)
+   CENTRAL DATA ARCHITECTURE
    ========================================================================== */
 const APP_DATA = {
   activeView: "overview",
   overviewRange: "2w",
 
-  scheduleScope: "team", // 'team' | 'person'
-  scheduleMode: "overview", // 'overview' | 'detailed'
+  scheduleScope: "team",
+  scheduleMode: "overview",
   scheduleSelectedPersonId: 1,
   scheduleRange: "2w",
   scheduleDetailedDay: "2026-09-18",
@@ -280,79 +289,72 @@ const APP_DATA = {
   },
 
   days: [
-  { key: "2026-09-18", dateStr: "Thu 18 Sep", short: "18 Sep", in1w: true },
-  { key: "2026-09-19", dateStr: "Fri 19 Sep", short: "19 Sep", in1w: true },
-  { key: "2026-09-20", dateStr: "Sat 20 Sep", short: "20 Sep", in1w: true },
-  { key: "2026-09-21", dateStr: "Sun 21 Sep", short: "21 Sep", in1w: true },
-  { key: "2026-09-22", dateStr: "Mon 22 Sep", short: "22 Sep", in1w: true },
-  { key: "2026-09-23", dateStr: "Tue 23 Sep", short: "23 Sep", in1w: true },
-  { key: "2026-09-24", dateStr: "Wed 24 Sep", short: "24 Sep", in1w: true },
-  { key: "2026-09-25", dateStr: "Thu 25 Sep", short: "25 Sep", in1w: false },
-  { key: "2026-09-26", dateStr: "Fri 26 Sep", short: "26 Sep", in1w: false },
-  { key: "2026-09-27", dateStr: "Sat 27 Sep", short: "27 Sep", in1w: false },
-  { key: "2026-09-28", dateStr: "Sun 28 Sep", short: "28 Sep", in1w: false },
-  { key: "2026-09-29", dateStr: "Mon 29 Sep", short: "29 Sep", in1w: false },
-  { key: "2026-09-30", dateStr: "Tue 30 Sep", short: "30 Sep", in1w: false },
-  { key: "2026-10-01", dateStr: "Wed 01 Oct", short: "01 Oct", in1w: false }],
-
+    { key: "2026-09-18", dateStr: "Thu 18 Sep", short: "18 Sep", in1w: true },
+    { key: "2026-09-19", dateStr: "Fri 19 Sep", short: "19 Sep", in1w: true },
+    { key: "2026-09-20", dateStr: "Sat 20 Sep", short: "20 Sep", in1w: true },
+    { key: "2026-09-21", dateStr: "Sun 21 Sep", short: "21 Sep", in1w: true },
+    { key: "2026-09-22", dateStr: "Mon 22 Sep", short: "22 Sep", in1w: true },
+    { key: "2026-09-23", dateStr: "Tue 23 Sep", short: "23 Sep", in1w: true },
+    { key: "2026-09-24", dateStr: "Wed 24 Sep", short: "24 Sep", in1w: true },
+    { key: "2026-09-25", dateStr: "Thu 25 Sep", short: "25 Sep", in1w: false },
+    { key: "2026-09-26", dateStr: "Fri 26 Sep", short: "26 Sep", in1w: false },
+    { key: "2026-09-27", dateStr: "Sat 27 Sep", short: "27 Sep", in1w: false },
+    { key: "2026-09-28", dateStr: "Sun 28 Sep", short: "28 Sep", in1w: false },
+    { key: "2026-09-29", dateStr: "Mon 29 Sep", short: "29 Sep", in1w: false },
+    { key: "2026-09-30", dateStr: "Tue 30 Sep", short: "30 Sep", in1w: false },
+    { key: "2026-10-01", dateStr: "Wed 01 Oct", short: "01 Oct", in1w: false }
+  ],
 
   periods: [
-  { key: "morning", label: "Morning", time: "09:00–12:00", startMin: 540, endMin: 720 },
-  { key: "afternoon", label: "Afternoon", time: "13:00–17:00", startMin: 780, endMin: 1020 },
-  { key: "evening", label: "Evening", time: "18:00–21:00", startMin: 1080, endMin: 1260 }],
+    { key: "morning", label: "Morning", time: "09:00–12:00", startMin: 540, endMin: 720 },
+    { key: "afternoon", label: "Afternoon", time: "13:00–17:00", startMin: 780, endMin: 1020 },
+    { key: "evening", label: "Evening", time: "18:00–21:00", startMin: 1080, endMin: 1260 }
+  ],
 
-
-  // PEOPLE Collection: Dynamic Team with Active flag
   members: [
-  { id: 1, name: "เอ", active: true },
-  { id: 2, name: "โบ", active: true },
-  { id: 3, name: "ฟ้า", active: true },
-  { id: 4, name: "กร", active: true },
-  { id: 5, name: "อุ้ม", active: true },
-  { id: 6, name: "แพร", active: true },
-  { id: 7, name: "แม็ก", active: true },
-  { id: 8, name: "นิ", active: true },
-  { id: 9, name: "ปิ่น", active: true },
-  { id: 10, name: "จ๊อบ", active: true }],
-
+    { id: 1, name: "เอ", active: true },
+    { id: 2, name: "โบ", active: true },
+    { id: 3, name: "ฟ้า", active: true },
+    { id: 4, name: "กร", active: true },
+    { id: 5, name: "อุ้ม", active: true },
+    { id: 6, name: "แพร", active: true },
+    { id: 7, name: "แม็ก", active: true },
+    { id: 8, name: "นิ", active: true },
+    { id: 9, name: "ปิ่น", active: true },
+    { id: 10, name: "จ๊อบ", active: true }
+  ],
 
   tasks: [
-  { id: "task-1", title: "Community Report", ownerId: 3, deadlineDate: "2026-09-19", deadlineTime: "17:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Waiting on regional survey results" },
-  { id: "task-2", title: "Budget Proposal", ownerId: 2, deadlineDate: "2026-09-20", deadlineTime: "12:00", quadrant: "q1", urgent: true, status: "Review", note: "Annual operational budget submission" },
-  { id: "task-3", title: "Event Poster Draft", ownerId: 5, deadlineDate: "2026-09-21", deadlineTime: null, quadrant: "q3", urgent: true, status: "Drafting", note: "Print and online formats" },
-  { id: "task-4", title: "Sponsor Outreach", ownerId: 7, deadlineDate: "2026-09-24", deadlineTime: "15:30", quadrant: "q2", urgent: false, status: "Outreach", note: "Pitch deck distribution to partners" },
-  { id: "task-5", title: "Backlog Grooming", ownerId: 1, deadlineDate: "2026-09-28", deadlineTime: null, quadrant: "q4", urgent: false, status: "Planned", note: "Review unscheduled tasks" },
-  { id: "task-6", title: "Research Synthesis", ownerId: 4, deadlineDate: "2026-09-30", deadlineTime: null, quadrant: "q2", urgent: false, status: "Writing", note: "Literature review chapter" },
-  { id: "task-7", title: "Safety Protocol Review", ownerId: 3, deadlineDate: "2026-09-20", deadlineTime: "10:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Activity ground compliance" },
-  { id: "task-8", title: "Permit Clearance", ownerId: 3, deadlineDate: "2026-09-22", deadlineTime: null, quadrant: "q1", urgent: true, status: "Pending", note: "District office endorsement" },
-  { id: "task-9", title: "Speaker Briefing Deck", ownerId: 3, deadlineDate: "2026-09-23", deadlineTime: "14:00", quadrant: "q1", urgent: true, status: "Drafting", note: "Guideline deck for guest speakers" },
-  { id: "task-10", title: "Volunteer Alignment Call", ownerId: 8, deadlineDate: "2026-09-22", deadlineTime: "19:00", quadrant: "q3", urgent: true, status: "Scheduled", note: "Coordinate 15 logistics volunteers" }],
-
+    { id: "task-1", title: "Community Report", ownerId: 3, deadlineDate: "2026-09-19", deadlineTime: "17:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Waiting on regional survey results" },
+    { id: "task-2", title: "Budget Proposal", ownerId: 2, deadlineDate: "2026-09-20", deadlineTime: "12:00", quadrant: "q1", urgent: true, status: "Review", note: "Annual operational budget submission" },
+    { id: "task-3", title: "Event Poster Draft", ownerId: 5, deadlineDate: "2026-09-21", deadlineTime: null, quadrant: "q3", urgent: true, status: "Drafting", note: "Print and online formats" },
+    { id: "task-4", title: "Sponsor Outreach", ownerId: 7, deadlineDate: "2026-09-24", deadlineTime: "15:30", quadrant: "q2", urgent: false, status: "Outreach", note: "Pitch deck distribution to partners" },
+    { id: "task-5", title: "Backlog Grooming", ownerId: 1, deadlineDate: "2026-09-28", deadlineTime: null, quadrant: "q4", urgent: false, status: "Planned", note: "Review unscheduled tasks" },
+    { id: "task-6", title: "Research Synthesis", ownerId: 4, deadlineDate: "2026-09-30", deadlineTime: null, quadrant: "q2", urgent: false, status: "Writing", note: "Literature review chapter" },
+    { id: "task-7", title: "Safety Protocol Review", ownerId: 3, deadlineDate: "2026-09-20", deadlineTime: "10:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Activity ground compliance" },
+    { id: "task-8", title: "Permit Clearance", ownerId: 3, deadlineDate: "2026-09-22", deadlineTime: null, quadrant: "q1", urgent: true, status: "Pending", note: "District office endorsement" },
+    { id: "task-9", title: "Speaker Briefing Deck", ownerId: 3, deadlineDate: "2026-09-23", deadlineTime: "14:00", quadrant: "q1", urgent: true, status: "Drafting", note: "Guideline deck for guest speakers" },
+    { id: "task-10", title: "Volunteer Alignment Call", ownerId: 8, deadlineDate: "2026-09-22", deadlineTime: "19:00", quadrant: "q3", urgent: true, status: "Scheduled", note: "Coordinate 15 logistics volunteers" }
+  ],
 
   blocks: [
-  { id: "b1", memberId: 1, dateKey: "2026-09-18", start: "08:30", end: "12:00", type: "available" },
-  { id: "b2", memberId: 1, dateKey: "2026-09-18", start: "13:00", end: "17:00", type: "available" },
-  { id: "b3", memberId: 1, dateKey: "2026-09-18", start: "18:00", end: "20:30", type: "busy", reason: "Family dinner" },
-
-  { id: "b4", memberId: 2, dateKey: "2026-09-18", start: "09:40", end: "11:10", type: "work", taskId: "task-2" },
-  { id: "b5", memberId: 2, dateKey: "2026-09-18", start: "13:30", end: "17:00", type: "available" },
-
-  { id: "b6", memberId: 3, dateKey: "2026-09-18", start: "09:00", end: "12:00", type: "busy", reason: "Faculty Seminar" },
-  { id: "b7", memberId: 3, dateKey: "2026-09-18", start: "13:15", end: "14:45", type: "work", taskId: "task-1" },
-  { id: "b8", memberId: 3, dateKey: "2026-09-18", start: "15:00", end: "18:00", type: "available" },
-
-  { id: "b9", memberId: 4, dateKey: "2026-09-18", start: "08:00", end: "16:00", type: "available" },
-
-  { id: "b10", memberId: 5, dateKey: "2026-09-18", start: "09:00", end: "13:00", type: "available" },
-  { id: "b11", memberId: 5, dateKey: "2026-09-18", start: "14:00", end: "16:00", type: "work", taskId: "task-3" },
-
-  { id: "b12", memberId: 7, dateKey: "2026-09-18", start: "10:00", end: "15:30", type: "available" },
-  { id: "b13", memberId: 7, dateKey: "2026-09-18", start: "16:20", end: "17:05", type: "work", taskId: "task-4" },
-
-  { id: "b14", memberId: 8, dateKey: "2026-09-18", start: "08:30", end: "17:00", type: "available" },
-  { id: "b15", memberId: 9, dateKey: "2026-09-18", start: "09:00", end: "18:00", type: "available" },
-  { id: "b16", memberId: 10, dateKey: "2026-09-18", start: "13:00", end: "18:00", type: "busy", reason: "Field trip" }],
-
+    { id: "b1", memberId: 1, dateKey: "2026-09-18", start: "08:30", end: "12:00", type: "available" },
+    { id: "b2", memberId: 1, dateKey: "2026-09-18", start: "13:00", end: "17:00", type: "available" },
+    { id: "b3", memberId: 1, dateKey: "2026-09-18", start: "18:00", end: "20:30", type: "busy", reason: "Family dinner" },
+    { id: "b4", memberId: 2, dateKey: "2026-09-18", start: "09:40", end: "11:10", type: "work", taskId: "task-2" },
+    { id: "b5", memberId: 2, dateKey: "2026-09-18", start: "13:30", end: "17:00", type: "available" },
+    { id: "b6", memberId: 3, dateKey: "2026-09-18", start: "09:00", end: "12:00", type: "busy", reason: "Faculty Seminar" },
+    { id: "b7", memberId: 3, dateKey: "2026-09-18", start: "13:15", end: "14:45", type: "work", taskId: "task-1" },
+    { id: "b8", memberId: 3, dateKey: "2026-09-18", start: "15:00", end: "18:00", type: "available" },
+    { id: "b9", memberId: 4, dateKey: "2026-09-18", start: "08:00", end: "16:00", type: "available" },
+    { id: "b10", memberId: 5, dateKey: "2026-09-18", start: "09:00", end: "13:00", type: "available" },
+    { id: "b11", memberId: 5, dateKey: "2026-09-18", start: "14:00", end: "16:00", type: "work", taskId: "task-3" },
+    { id: "b12", memberId: 7, dateKey: "2026-09-18", start: "10:00", end: "15:30", type: "available" },
+    { id: "b13", memberId: 7, dateKey: "2026-09-18", start: "16:20", end: "17:05", type: "work", taskId: "task-4" },
+    { id: "b14", memberId: 8, dateKey: "2026-09-18", start: "08:30", end: "17:00", type: "available" },
+    { id: "b15", memberId: 9, dateKey: "2026-09-18", start: "09:00", end: "18:00", type: "available" },
+    { id: "b16", memberId: 10, dateKey: "2026-09-18", start: "13:00", end: "18:00", type: "busy", reason: "Field trip" }
+  ],
 
   blockNotes: {
     "b3": ["President: Family dinner noted."]
@@ -392,12 +394,11 @@ function getMemberStatusInRange(memberId, dateKey, startMin, endMin) {
   return { type: "nodata", reason: t("status_nodata") };
 }
 
-// Strictly evaluates active members only
 function calculateExactQuorum(dateKey, startMin, endMin, targetMemberIds = null) {
   const activeRoster = getActiveMembers();
   const members = targetMemberIds ?
-  activeRoster.filter((m) => targetMemberIds.includes(m.id)) :
-  activeRoster;
+    activeRoster.filter((m) => targetMemberIds.includes(m.id)) :
+    activeRoster;
 
   let availableCount = 0;
   const conflicts = [];
@@ -439,13 +440,20 @@ function sortTasksByDeadline(a, b) {
 /* ==========================================================================
    APP INITIALIZATION & TRANSLATION ENGINE
    ========================================================================== */
-document.addEventListener("DOMContentLoaded", () => {
+function initEntireApp() {
+  initAuthHandlers();
   setupNavigation();
   setupGlobalControls();
   initPersonPickers();
   updateStaticTranslations();
   refreshAllActiveViews();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initEntireApp);
+} else {
+  initEntireApp();
+}
 
 function setLanguage(lang) {
   currentLang = lang;
@@ -475,14 +483,18 @@ function setupNavigation() {
     });
   });
 
-  document.getElementById("lang-th").addEventListener("click", () => setLanguage("th"));
-  document.getElementById("lang-en").addEventListener("click", () => setLanguage("en"));
+  const btnTh = document.getElementById("lang-th");
+  const btnEn = document.getElementById("lang-en");
+  if (btnTh) btnTh.addEventListener("click", () => setLanguage("th"));
+  if (btnEn) btnEn.addEventListener("click", () => setLanguage("en"));
 }
 
 function refreshAllActiveViews() {
   const activeCount = getActiveMembers().length;
-  document.getElementById("ov-team-subtitle").innerText = t("ov_subtitle", activeCount);
-  document.getElementById("pill-everyone-label").innerText = t("scope_everyone", activeCount);
+  const subtitleEl = document.getElementById("ov-team-subtitle");
+  const pillEl = document.getElementById("pill-everyone-label");
+  if (subtitleEl) subtitleEl.innerText = t("ov_subtitle", activeCount);
+  if (pillEl) pillEl.innerText = t("scope_everyone", activeCount);
 
   renderOverviewSharedSlots();
   renderOverviewSchedule();
@@ -499,6 +511,9 @@ function refreshAllActiveViews() {
    VIEW 1: OVERVIEW IMPLEMENTATION
    ========================================================================== */
 function renderOverviewSharedSlots() {
+  const container = document.getElementById("shared-time-list");
+  if (!container) return;
+
   const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
   const candidateSlots = [];
 
@@ -512,7 +527,6 @@ function renderOverviewSharedSlots() {
   candidateSlots.sort((a, b) => b.score - a.score);
   const top3 = candidateSlots.slice(0, 3);
 
-  const container = document.getElementById("shared-time-list");
   container.innerHTML = top3.map((item, idx) => `
     <div class="slot-card" onclick="openRangeInspector('${item.day.key}', ${item.period.startMin}, ${item.period.endMin}, '${item.day.dateStr} · ${item.period.label} (${item.period.time})')">
       <div class="slot-rank">${t("top_3_recs")} #${idx + 1}</div>
@@ -525,8 +539,10 @@ function renderOverviewSharedSlots() {
     </div>
   `).join("");
 
-  document.getElementById("best-shared-caption").innerText =
-  t("best_shared_caption", APP_DATA.overviewRange === '1w' ? '7' : '14');
+  const captionEl = document.getElementById("best-shared-caption");
+  if (captionEl) {
+    captionEl.innerText = t("best_shared_caption", APP_DATA.overviewRange === '1w' ? '7' : '14');
+  }
 }
 
 function renderOverviewSchedule() {
@@ -594,6 +610,7 @@ function renderOverviewSchedule() {
 
 function renderTeamNowSummary() {
   const container = document.getElementById("team-now-list");
+  if (!container) return;
   const counts = { available: 0, work: 0, busy: 0, nodata: 0 };
   const todayKey = "2026-09-18";
   const nowStart = 540;
@@ -628,10 +645,15 @@ function renderTeamNowSummary() {
     `;
   }).join("");
 
-  document.getElementById("count-available").innerText = counts.available;
-  document.getElementById("count-work").innerText = counts.work;
-  document.getElementById("count-busy").innerText = counts.busy;
-  document.getElementById("count-nodata").innerText = counts.nodata;
+  const cAvail = document.getElementById("count-available");
+  const cWork = document.getElementById("count-work");
+  const cBusy = document.getElementById("count-busy");
+  const cNo = document.getElementById("count-nodata");
+
+  if (cAvail) cAvail.innerText = counts.available;
+  if (cWork) cWork.innerText = counts.work;
+  if (cBusy) cBusy.innerText = counts.busy;
+  if (cNo) cNo.innerText = counts.nodata;
 }
 
 function renderOverviewMatrixSnapshot() {
@@ -643,23 +665,31 @@ function renderOverviewMatrixSnapshot() {
     if (t.urgent) urgent48++;
   });
 
-  document.getElementById("matrix-count-q1").innerText = counts.q1;
-  document.getElementById("matrix-count-q2").innerText = counts.q2;
-  document.getElementById("matrix-count-q3").innerText = counts.q3;
-  document.getElementById("matrix-count-q4").innerText = counts.q4;
-  document.getElementById("insight-urgent-count").innerHTML = t("insight_urgent", urgent48);
+  const mq1 = document.getElementById("matrix-count-q1");
+  const mq2 = document.getElementById("matrix-count-q2");
+  const mq3 = document.getElementById("matrix-count-q3");
+  const mq4 = document.getElementById("matrix-count-q4");
+  const insUrg = document.getElementById("insight-urgent-count");
+  const insUnass = document.getElementById("insight-unassigned-count");
+
+  if (mq1) mq1.innerText = counts.q1;
+  if (mq2) mq2.innerText = counts.q2;
+  if (mq3) mq3.innerText = counts.q3;
+  if (mq4) mq4.innerText = counts.q4;
+  if (insUrg) insUrg.innerHTML = t("insight_urgent", urgent48);
 
   const unassignedImp = APP_DATA.tasks.filter((t) => (t.quadrant === "q1" || t.quadrant === "q2") && !APP_DATA.blocks.some((b) => b.taskId === t.id)).length;
-  document.getElementById("insight-unassigned-count").innerHTML = t("insight_unassigned", unassignedImp);
+  if (insUnass) insUnass.innerHTML = t("insight_unassigned", unassignedImp);
 }
 
 function renderOverviewDeadlines() {
   const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
   const dayKeys = days.map((d) => d.key);
   const container = document.getElementById("deadline-list");
+  if (!container) return;
 
-  document.getElementById("deadline-range-label").innerText =
-  APP_DATA.overviewRange === "1w" ? t("btn_1week") : t("btn_2weeks");
+  const lbl = document.getElementById("deadline-range-label");
+  if (lbl) lbl.innerText = APP_DATA.overviewRange === "1w" ? t("btn_1week") : t("btn_2weeks");
 
   const tasksInRange = APP_DATA.tasks.filter((t) => dayKeys.includes(t.deadlineDate)).sort(sortTasksByDeadline);
   if (tasksInRange.length === 0) {
@@ -691,11 +721,16 @@ function renderOverviewDeadlines() {
 function renderScheduleView() {
   const container = document.getElementById("schedule-viewport-container");
   const caption = document.getElementById("sched-view-caption");
+  if (!container || !caption) return;
 
   const isDetailed = APP_DATA.scheduleMode === "detailed";
-  document.getElementById("sched-range-control").style.display = isDetailed ? "none" : "flex";
-  document.getElementById("sched-day-control").style.display = isDetailed ? "flex" : "none";
-  document.getElementById("sched-person-select").style.display = APP_DATA.scheduleScope === "person" ? "inline-block" : "none";
+  const rCtrl = document.getElementById("sched-range-control");
+  const dCtrl = document.getElementById("sched-day-control");
+  const pSel = document.getElementById("sched-person-select");
+
+  if (rCtrl) rCtrl.style.display = isDetailed ? "none" : "flex";
+  if (dCtrl) dCtrl.style.display = isDetailed ? "flex" : "none";
+  if (pSel) pSel.style.display = APP_DATA.scheduleScope === "person" ? "inline-block" : "none";
 
   if (APP_DATA.scheduleScope === "team" && APP_DATA.scheduleMode === "overview") {
     caption.innerText = `${t("scope_team")} / ${t("mode_overview")} — 1-2 ${t("btn_2weeks")}`;
@@ -753,16 +788,16 @@ function renderScheduleTeamOverview(container) {
             <tr>
               <td class="sticky-col">${m.name}</td>
               ${columns.map((c) => {
-    const st = getMemberStatusInRange(m.id, c.day.key, c.period.startMin, c.period.endMin);
-    let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
-    return `
+                const st = getMemberStatusInRange(m.id, c.day.key, c.period.startMin, c.period.endMin);
+                let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
+                return `
                   <td class="sched-grid-cell ${c.isHigh ? 'col-subtle-tint' : ''}">
                     <div class="compact-tile block-${st.type}" onclick="openRangeInspector('${c.day.key}', ${c.period.startMin}, ${c.period.endMin}, '${c.day.dateStr} · ${c.period.label}')">
                       ${label}
                     </div>
                   </td>
                 `;
-  }).join("")}
+              }).join("")}
             </tr>
           `).join("")}
         </tbody>
@@ -854,10 +889,10 @@ function renderScheduleTeamDetailed(container) {
         </div>
         <div class="quorum-gradient-track">
           ${stripSegments.map((seg) => {
-    const ratio = seg.total > 0 ? seg.available / seg.total : 0;
-    const bg = ratio >= 0.8 ? '#A7D7B5' : ratio >= 0.5 ? '#CFE3D5' : '#ECECE8';
-    const color = ratio >= 0.8 ? '#1E5833' : '#4E4E4A';
-    return `
+            const ratio = seg.total > 0 ? seg.available / seg.total : 0;
+            const bg = ratio >= 0.8 ? '#A7D7B5' : ratio >= 0.5 ? '#CFE3D5' : '#ECECE8';
+            const color = ratio >= 0.8 ? '#1E5833' : '#4E4E4A';
+            return `
               <div class="quorum-hour-segment" 
                    style="background:${bg}; color:${color};"
                    title="${seg.label}: ${seg.available}/${seg.total} ${t('status_free')}"
@@ -865,7 +900,7 @@ function renderScheduleTeamDetailed(container) {
                 ${seg.available}
               </div>
             `;
-  }).join("")}
+          }).join("")}
         </div>
       </div>
 
@@ -893,14 +928,14 @@ function renderSchedulePersonOverview(container) {
             <div class="my-day-label">${d.short}</div>
             <div class="my-segments-wrap">
               ${APP_DATA.periods.map((p) => {
-    const st = getMemberStatusInRange(member.id, d.key, p.startMin, p.endMin);
-    let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
-    return `
+                const st = getMemberStatusInRange(member.id, d.key, p.startMin, p.endMin);
+                let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
+                return `
                   <button class="my-segment-btn block-${st.type}" onclick="openBlockInputModal(${member.id}, '${d.key}', '${formatMinutesToTime(p.startMin)}', '${formatMinutesToTime(p.endMin)}')">
                     ${p.label}: ${label}
                   </button>
                 `;
-  }).join("")}
+              }).join("")}
             </div>
           </div>
         `).join("")}
@@ -921,8 +956,8 @@ function renderSchedulePersonDetailed(container) {
       </div>
       <div style="display:flex; flex-direction:column; gap:12px;">
         ${weekDays.map((d) => {
-    const dayBlocks = APP_DATA.blocks.filter((b) => b.memberId === member.id && b.dateKey === d.key);
-    return `
+          const dayBlocks = APP_DATA.blocks.filter((b) => b.memberId === member.id && b.dateKey === d.key);
+          return `
             <div style="padding:12px; background:#FAF9F7; border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
               <div style="font-weight:700; font-size:0.9rem; margin-bottom:8px;">${d.dateStr}</div>
               ${dayBlocks.length === 0 ? `<div style="font-size:0.8rem; color:var(--text-muted);">${t("status_free")}</div>` : `
@@ -936,7 +971,7 @@ function renderSchedulePersonDetailed(container) {
               `}
             </div>
           `;
-  }).join("")}
+        }).join("")}
       </div>
     </div>
   `;
@@ -961,32 +996,41 @@ window.handleTimelineTrackClick = function (event, memberId, dateKey) {
 function renderEisenhowerMatrix() {
   const isTeam = APP_DATA.matrixFilterMode === "team";
   const tasks = (isTeam ?
-  APP_DATA.tasks :
-  APP_DATA.tasks.filter((t) => t.ownerId === APP_DATA.matrixSelectedMemberId)).
-  sort(sortTasksByDeadline);
+    APP_DATA.tasks :
+    APP_DATA.tasks.filter((t) => t.ownerId === APP_DATA.matrixSelectedMemberId)
+  ).sort(sortTasksByDeadline);
 
   const buckets = { q1: [], q2: [], q3: [], q4: [] };
-  tasks.forEach((t) => {if (buckets[t.quadrant]) buckets[t.quadrant].push(t);});
+  tasks.forEach((t) => { if (buckets[t.quadrant]) buckets[t.quadrant].push(t); });
 
-  document.getElementById("mat-sum-q1").innerText = buckets.q1.length;
-  document.getElementById("mat-sum-q2").innerText = buckets.q2.length;
-  document.getElementById("mat-sum-q3").innerText = buckets.q3.length;
-  document.getElementById("mat-sum-q4").innerText = buckets.q4.length;
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = val;
+  };
 
-  document.getElementById("count-badge-q1").innerText = buckets.q1.length;
-  document.getElementById("count-badge-q2").innerText = buckets.q2.length;
-  document.getElementById("count-badge-q3").innerText = buckets.q3.length;
-  document.getElementById("count-badge-q4").innerText = buckets.q4.length;
+  setVal("mat-sum-q1", buckets.q1.length);
+  setVal("mat-sum-q2", buckets.q2.length);
+  setVal("mat-sum-q3", buckets.q3.length);
+  setVal("mat-sum-q4", buckets.q4.length);
+
+  setVal("count-badge-q1", buckets.q1.length);
+  setVal("count-badge-q2", buckets.q2.length);
+  setVal("count-badge-q3", buckets.q3.length);
+  setVal("count-badge-q4", buckets.q4.length);
 
   const urgentCount = tasks.filter((t) => t.urgent).length;
   const importantNoBlock = tasks.filter((t) => (t.quadrant === "q1" || t.quadrant === "q2") && !APP_DATA.blocks.some((b) => b.taskId === t.id)).length;
-  document.getElementById("mat-factual-insights").innerHTML = `
-    <div class="insight-row"><span class="insight-bullet bullet-warn"></span><span>${t("insight_urgent", urgentCount)}</span></div>
-    ${importantNoBlock > 0 ? `<div class="insight-row"><span class="insight-bullet bullet-info"></span><span>${t("insight_unassigned", importantNoBlock)}</span></div>` : ''}
-  `;
+  const insightsEl = document.getElementById("mat-factual-insights");
+  if (insightsEl) {
+    insightsEl.innerHTML = `
+      <div class="insight-row"><span class="insight-bullet bullet-warn"></span><span>${t("insight_urgent", urgentCount)}</span></div>
+      ${importantNoBlock > 0 ? `<div class="insight-row"><span class="insight-bullet bullet-info"></span><span>${t("insight_unassigned", importantNoBlock)}</span></div>` : ''}
+    `;
+  }
 
   ["q1", "q2", "q3", "q4"].forEach((qCode) => {
     const listEl = document.getElementById(`eq-list-${qCode}`);
+    if (!listEl) return;
     const items = buckets[qCode];
     if (items.length === 0) {
       listEl.innerHTML = `<div class="eq-empty-state">${t("empty_no_tasks")}</div>`;
@@ -1014,53 +1058,66 @@ function renderEisenhowerMatrix() {
 function renderMePage() {
   const currentMember = APP_DATA.members.find((m) => m.id === APP_DATA.currentUserId) || getActiveMembers()[0];
   if (!currentMember) return;
-  document.getElementById("me-heading-name").innerText = `${currentMember.name}`;
+  const nameEl = document.getElementById("me-heading-name");
+  if (nameEl) nameEl.innerText = `${currentMember.name}`;
 
   const weekDays = APP_DATA.days.filter((d) => d.in1w);
   const schedContainer = document.getElementById("me-schedule-display");
 
-  schedContainer.innerHTML = weekDays.map((day) => {
-    const dayBlocks = APP_DATA.blocks.filter((b) => b.memberId === currentMember.id && b.dateKey === day.key);
-    return `
-      <div class="my-day-row">
-        <div class="my-day-label">${day.short}</div>
-        <div class="my-segments-wrap">
-          ${dayBlocks.length === 0 ? `
-            <button class="btn-chip" onclick="openBlockInputModal(${currentMember.id}, '${day.key}', '09:00', '12:00')">${t("btn_add_block")}</button>
-          ` : dayBlocks.map((b) => `
-            <button class="my-segment-btn block-${b.type}" onclick="openBlockDetailInspector('${b.id}')">
-              ${b.start}–${b.end}: ${t("status_" + b.type)}
-            </button>
-          `).join("")}
+  if (schedContainer) {
+    schedContainer.innerHTML = weekDays.map((day) => {
+      const dayBlocks = APP_DATA.blocks.filter((b) => b.memberId === currentMember.id && b.dateKey === day.key);
+      return `
+        <div class="my-day-row">
+          <div class="my-day-label">${day.short}</div>
+          <div class="my-segments-wrap">
+            ${dayBlocks.length === 0 ? `
+              <button class="btn-chip" onclick="openBlockInputModal(${currentMember.id}, '${day.key}', '09:00', '12:00')">${t("btn_add_block")}</button>
+            ` : dayBlocks.map((b) => `
+              <button class="my-segment-btn block-${b.type}" onclick="openBlockDetailInspector('${b.id}')">
+                ${b.start}–${b.end}: ${t("status_" + b.type)}
+              </button>
+            `).join("")}
+          </div>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    }).join("");
+  }
 
   const myTasks = APP_DATA.tasks.filter((t) => t.ownerId === currentMember.id).sort(sortTasksByDeadline);
-  document.getElementById("me-task-count-badge").innerText = `${myTasks.length} tasks`;
-  document.getElementById("me-tasks-list").innerHTML = myTasks.length === 0 ? `<div style="font-size:0.85rem; color:var(--text-muted); padding:8px 0;">${t("empty_no_assigned")}</div>` : myTasks.map((task) => {
-    const q = APP_DATA.quadrants[task.quadrant];
-    return `
-      <div class="deadline-item" onclick="openTaskInspector('${task.id}')">
-        <div>
-          <div class="task-title">${task.title}</div>
-          <div class="task-meta">${t("th_status")}: ${task.status || 'In Progress'}</div>
+  const badgeEl = document.getElementById("me-task-count-badge");
+  const taskListEl = document.getElementById("me-tasks-list");
+
+  if (badgeEl) badgeEl.innerText = `${myTasks.length} tasks`;
+  if (taskListEl) {
+    taskListEl.innerHTML = myTasks.length === 0 ? `<div style="font-size:0.85rem; color:var(--text-muted); padding:8px 0;">${t("empty_no_assigned")}</div>` : myTasks.map((task) => {
+      const q = APP_DATA.quadrants[task.quadrant];
+      return `
+        <div class="deadline-item" onclick="openTaskInspector('${task.id}')">
+          <div>
+            <div class="task-title">${task.title}</div>
+            <div class="task-meta">${t("th_status")}: ${task.status || 'In Progress'}</div>
+          </div>
+          <div class="deadline-right">
+            <span class="deadline-due ${task.urgent ? 'due-urgent' : ''}">${formatTaskDeadline(task)}</span>
+            <span class="priority-pill ${q.css}">${t(q.labelKey)}</span>
+          </div>
         </div>
-        <div class="deadline-right">
-          <span class="deadline-due ${task.urgent ? 'due-urgent' : ''}">${formatTaskDeadline(task)}</span>
-          <span class="priority-pill ${q.css}">${t(q.labelKey)}</span>
-        </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    }).join("");
+  }
 
   const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
-  myTasks.forEach((t) => {counts[t.quadrant] = (counts[t.quadrant] || 0) + 1;});
-  document.getElementById("me-count-q1").innerText = counts.q1;
-  document.getElementById("me-count-q2").innerText = counts.q2;
-  document.getElementById("me-count-q3").innerText = counts.q3;
-  document.getElementById("me-count-q4").innerText = counts.q4;
+  myTasks.forEach((t) => { counts[t.quadrant] = (counts[t.quadrant] || 0) + 1; });
+  const meq1 = document.getElementById("me-count-q1");
+  const meq2 = document.getElementById("me-count-q2");
+  const meq3 = document.getElementById("me-count-q3");
+  const meq4 = document.getElementById("me-count-q4");
+
+  if (meq1) meq1.innerText = counts.q1;
+  if (meq2) meq2.innerText = counts.q2;
+  if (meq3) meq3.innerText = counts.q3;
+  if (meq4) meq4.innerText = counts.q4;
 }
 
 /* ==========================================================================
@@ -1114,6 +1171,7 @@ window.adjustBlockDuration = function (minutesToAdd) {
    ========================================================================== */
 function renderTeamSettingsList() {
   const tbody = document.getElementById("team-settings-member-list");
+  if (!tbody) return;
   tbody.innerHTML = APP_DATA.members.map((m) => `
     <tr style="border-bottom:1px solid var(--border-subtle);">
       <td style="padding:10px 12px; font-weight:600;">
@@ -1175,16 +1233,16 @@ function openRangeInspector(dateKey, startMin, endMin, title) {
 
     <h4 class="drawer-section-title">${t("status_busy")} (${q.conflicts.length})</h4>
     ${q.conflicts.length === 0 ? `<div style="font-size:0.82rem; color:var(--text-muted);">${t("choice_no")} conflicts.</div>` : q.conflicts.map((c) => {
-    let badge = "";
-    let taskDetail = "";
-    if (c.task) {
-      const qInfo = APP_DATA.quadrants[c.task.quadrant];
-      badge = `<span class="priority-pill ${qInfo.css}" style="font-size:0.65rem;">${t(qInfo.labelKey)}</span>`;
-      taskDetail = `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Deadline: ${formatTaskDeadline(c.task)}</div>`;
-    } else if (c.type === "nodata") {
-      badge = `<span class="status-tag tag-nodata">${t("status_nodata")}</span>`;
-    }
-    return `
+      let badge = "";
+      let taskDetail = "";
+      if (c.task) {
+        const qInfo = APP_DATA.quadrants[c.task.quadrant];
+        badge = `<span class="priority-pill ${qInfo.css}" style="font-size:0.65rem;">${t(qInfo.labelKey)}</span>`;
+        taskDetail = `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Deadline: ${formatTaskDeadline(c.task)}</div>`;
+      } else if (c.type === "nodata") {
+        badge = `<span class="status-tag tag-nodata">${t("status_nodata")}</span>`;
+      }
+      return `
         <div class="drawer-person-row unavailable">
           <div>
             <strong>${c.name}</strong>
@@ -1194,7 +1252,7 @@ function openRangeInspector(dateKey, startMin, endMin, title) {
           <div>${badge}</div>
         </div>
       `;
-  }).join("")}
+    }).join("")}
 
     <h4 class="drawer-section-title">${t("status_available")} (${q.availableMembers.length})</h4>
     ${q.availableMembers.map((m) => `
@@ -1365,263 +1423,315 @@ function setupGlobalControls() {
   const findModal = document.getElementById("find-time-modal");
   const teamSettingsModal = document.getElementById("team-settings-modal");
 
-  // Team Settings Button
-  document.getElementById("btn-open-team-settings").addEventListener("click", () => {
-    renderTeamSettingsList();
-    openModal(teamSettingsModal);
-  });
-  document.getElementById("close-team-settings").addEventListener("click", closeAllOverlays);
+  const btnOpenTeam = document.getElementById("btn-open-team-settings");
+  if (btnOpenTeam) {
+    btnOpenTeam.addEventListener("click", () => {
+      renderTeamSettingsList();
+      openModal(teamSettingsModal);
+    });
+  }
 
-  // Add Member Form
-  document.getElementById("form-add-member").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const input = document.getElementById("input-new-member-name");
-    const name = input.value.trim();
-    if (!name) return;
+  const btnCloseTeam = document.getElementById("close-team-settings");
+  if (btnCloseTeam) btnCloseTeam.addEventListener("click", closeAllOverlays);
 
-    const newId = APP_DATA.members.length > 0 ? Math.max(...APP_DATA.members.map((m) => m.id)) + 1 : 1;
-    APP_DATA.members.push({ id: newId, name, active: true });
-    input.value = "";
-    renderTeamSettingsList();
-    initPersonPickers();
-    refreshAllActiveViews();
-  });
+  const formAddMember = document.getElementById("form-add-member");
+  if (formAddMember) {
+    formAddMember.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = document.getElementById("input-new-member-name");
+      const name = input.value.trim();
+      if (!name) return;
 
-  // Overview Range Controls
-  document.getElementById("btn-ov-1w").addEventListener("click", () => {
-    document.getElementById("btn-ov-1w").classList.add("active");
-    document.getElementById("btn-ov-2w").classList.remove("active");
-    APP_DATA.overviewRange = "1w";
-    refreshAllActiveViews();
-  });
-  document.getElementById("btn-ov-2w").addEventListener("click", () => {
-    document.getElementById("btn-ov-2w").classList.add("active");
-    document.getElementById("btn-ov-1w").classList.remove("active");
-    APP_DATA.overviewRange = "2w";
-    refreshAllActiveViews();
-  });
+      const newId = APP_DATA.members.length > 0 ? Math.max(...APP_DATA.members.map((m) => m.id)) + 1 : 1;
+      APP_DATA.members.push({ id: newId, name, active: true });
+      input.value = "";
+      renderTeamSettingsList();
+      initPersonPickers();
+      refreshAllActiveViews();
+    });
+  }
 
-  // Schedule Scope
-  document.getElementById("btn-sched-scope-team").addEventListener("click", () => {
-    document.getElementById("btn-sched-scope-team").classList.add("active");
-    document.getElementById("btn-sched-scope-person").classList.remove("active");
-    APP_DATA.scheduleScope = "team";
-    renderScheduleView();
-  });
-  document.getElementById("btn-sched-scope-person").addEventListener("click", () => {
-    document.getElementById("btn-sched-scope-person").classList.add("active");
-    document.getElementById("btn-sched-scope-team").classList.remove("active");
-    APP_DATA.scheduleScope = "person";
-    renderScheduleView();
-  });
+  const btnOv1w = document.getElementById("btn-ov-1w");
+  const btnOv2w = document.getElementById("btn-ov-2w");
+  if (btnOv1w && btnOv2w) {
+    btnOv1w.addEventListener("click", () => {
+      btnOv1w.classList.add("active");
+      btnOv2w.classList.remove("active");
+      APP_DATA.overviewRange = "1w";
+      refreshAllActiveViews();
+    });
+    btnOv2w.addEventListener("click", () => {
+      btnOv2w.classList.add("active");
+      btnOv1w.classList.remove("active");
+      APP_DATA.overviewRange = "2w";
+      refreshAllActiveViews();
+    });
+  }
 
-  // Schedule Mode
-  document.getElementById("btn-sched-mode-overview").addEventListener("click", () => {
-    document.getElementById("btn-sched-mode-overview").classList.add("active");
-    document.getElementById("btn-sched-mode-detailed").classList.remove("active");
-    APP_DATA.scheduleMode = "overview";
-    renderScheduleView();
-  });
-  document.getElementById("btn-sched-mode-detailed").addEventListener("click", () => {
-    document.getElementById("btn-sched-mode-detailed").classList.add("active");
-    document.getElementById("btn-sched-mode-overview").classList.remove("active");
-    APP_DATA.scheduleMode = "detailed";
-    renderScheduleView();
-  });
-
-  // Schedule Range
-  document.getElementById("btn-sched-1w").addEventListener("click", () => {
-    document.getElementById("btn-sched-1w").classList.add("active");
-    document.getElementById("btn-sched-2w").classList.remove("active");
-    APP_DATA.scheduleRange = "1w";
-    renderScheduleView();
-  });
-  document.getElementById("btn-sched-2w").addEventListener("click", () => {
-    document.getElementById("btn-sched-2w").classList.add("active");
-    document.getElementById("btn-sched-1w").classList.remove("active");
-    APP_DATA.scheduleRange = "2w";
-    renderScheduleView();
-  });
-
-  // Day Picker
-  document.getElementById("btn-sched-prev-day").addEventListener("click", () => {
-    const idx = APP_DATA.days.findIndex((d) => d.key === APP_DATA.scheduleDetailedDay);
-    if (idx > 0) {
-      APP_DATA.scheduleDetailedDay = APP_DATA.days[idx - 1].key;
-      document.getElementById("sched-single-day-select").value = APP_DATA.scheduleDetailedDay;
+  const btnSchedScopeTeam = document.getElementById("btn-sched-scope-team");
+  const btnSchedScopePerson = document.getElementById("btn-sched-scope-person");
+  if (btnSchedScopeTeam && btnSchedScopePerson) {
+    btnSchedScopeTeam.addEventListener("click", () => {
+      btnSchedScopeTeam.classList.add("active");
+      btnSchedScopePerson.classList.remove("active");
+      APP_DATA.scheduleScope = "team";
       renderScheduleView();
-    }
-  });
-  document.getElementById("btn-sched-next-day").addEventListener("click", () => {
-    const idx = APP_DATA.days.findIndex((d) => d.key === APP_DATA.scheduleDetailedDay);
-    if (idx < APP_DATA.days.length - 1) {
-      APP_DATA.scheduleDetailedDay = APP_DATA.days[idx + 1].key;
-      document.getElementById("sched-single-day-select").value = APP_DATA.scheduleDetailedDay;
+    });
+    btnSchedScopePerson.addEventListener("click", () => {
+      btnSchedScopePerson.classList.add("active");
+      btnSchedScopeTeam.classList.remove("active");
+      APP_DATA.scheduleScope = "person";
       renderScheduleView();
-    }
-  });
-  document.getElementById("sched-single-day-select").addEventListener("change", (e) => {
-    APP_DATA.scheduleDetailedDay = e.target.value;
-    renderScheduleView();
-  });
+    });
+  }
 
-  // Matrix View Switches
-  document.getElementById("mat-btn-team").addEventListener("click", () => {
-    document.getElementById("mat-btn-team").classList.add("active");
-    document.getElementById("mat-btn-indiv").classList.remove("active");
-    document.getElementById("mat-person-select").style.display = "none";
-    APP_DATA.matrixFilterMode = "team";
-    renderEisenhowerMatrix();
-  });
-  document.getElementById("mat-btn-indiv").addEventListener("click", () => {
-    document.getElementById("mat-btn-indiv").classList.add("active");
-    document.getElementById("mat-btn-team").classList.remove("active");
-    document.getElementById("mat-person-select").style.display = "inline-block";
-    APP_DATA.matrixFilterMode = "individual";
-    renderEisenhowerMatrix();
-  });
+  const btnSchedModeOv = document.getElementById("btn-sched-mode-overview");
+  const btnSchedModeDet = document.getElementById("btn-sched-mode-detailed");
+  if (btnSchedModeOv && btnSchedModeDet) {
+    btnSchedModeOv.addEventListener("click", () => {
+      btnSchedModeOv.classList.add("active");
+      btnSchedModeDet.classList.remove("active");
+      APP_DATA.scheduleMode = "overview";
+      renderScheduleView();
+    });
+    btnSchedModeDet.addEventListener("click", () => {
+      btnSchedModeDet.classList.add("active");
+      btnSchedModeOv.classList.remove("active");
+      APP_DATA.scheduleMode = "detailed";
+      renderScheduleView();
+    });
+  }
 
-  // Me Page Triggers
-  document.getElementById("me-quick-add-block").addEventListener("click", () => {
-    openBlockInputModal(APP_DATA.currentUserId, "2026-09-18", "09:00", "11:00");
-  });
-  document.getElementById("me-quick-add-task").addEventListener("click", () => {
-    document.getElementById("input-task-owner").value = APP_DATA.currentUserId;
-    openModal(taskModal);
-  });
+  const btnSched1w = document.getElementById("btn-sched-1w");
+  const btnSched2w = document.getElementById("btn-sched-2w");
+  if (btnSched1w && btnSched2w) {
+    btnSched1w.addEventListener("click", () => {
+      btnSched1w.classList.add("active");
+      btnSched2w.classList.remove("active");
+      APP_DATA.scheduleRange = "1w";
+      renderScheduleView();
+    });
+    btnSched2w.addEventListener("click", () => {
+      btnSched2w.classList.add("active");
+      btnSched1w.classList.remove("active");
+      APP_DATA.scheduleRange = "2w";
+      renderScheduleView();
+    });
+  }
 
-  document.getElementById("btn-copy-prev-week").addEventListener("click", () => {
-    const memberId = APP_DATA.currentUserId;
-    const week1Blocks = APP_DATA.blocks.filter((b) => b.memberId === memberId && APP_DATA.days.find((d) => d.key === b.dateKey)?.in1w);
+  const btnPrevDay = document.getElementById("btn-sched-prev-day");
+  const btnNextDay = document.getElementById("btn-sched-next-day");
+  const selDay = document.getElementById("sched-single-day-select");
 
-    week1Blocks.forEach((b) => {
-      const dayIndex = APP_DATA.days.findIndex((d) => d.key === b.dateKey);
-      if (dayIndex !== -1 && dayIndex + 7 < APP_DATA.days.length) {
-        const nextWeekKey = APP_DATA.days[dayIndex + 7].key;
-        APP_DATA.blocks.push({
-          id: `b_${Date.now()}_${Math.random()}`,
-          memberId: b.memberId,
-          dateKey: nextWeekKey,
-          start: b.start,
-          end: b.end,
-          type: b.type,
-          taskId: b.taskId || null,
-          reason: b.reason || null
-        });
+  if (btnPrevDay && selDay) {
+    btnPrevDay.addEventListener("click", () => {
+      const idx = APP_DATA.days.findIndex((d) => d.key === APP_DATA.scheduleDetailedDay);
+      if (idx > 0) {
+        APP_DATA.scheduleDetailedDay = APP_DATA.days[idx - 1].key;
+        selDay.value = APP_DATA.scheduleDetailedDay;
+        renderScheduleView();
       }
     });
-    refreshAllActiveViews();
-    alert("Copied week 1 blocks to week 2.");
-  });
+  }
 
-  // Save Schedule Block Form
-  document.getElementById("form-schedule-block").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const existingId = document.getElementById("input-block-id").value;
-    const memberId = parseInt(document.getElementById("input-block-member-id").value);
-    const dateKey = document.getElementById("input-block-date").value;
-    const start = document.getElementById("input-block-start").value;
-    const end = document.getElementById("input-block-end").value;
-    const activeType = document.querySelector("#block-type-selector .btn-type-pill.active").getAttribute("data-type");
+  if (btnNextDay && selDay) {
+    btnNextDay.addEventListener("click", () => {
+      const idx = APP_DATA.days.findIndex((d) => d.key === APP_DATA.scheduleDetailedDay);
+      if (idx < APP_DATA.days.length - 1) {
+        APP_DATA.scheduleDetailedDay = APP_DATA.days[idx + 1].key;
+        selDay.value = APP_DATA.scheduleDetailedDay;
+        renderScheduleView();
+      }
+    });
+  }
 
-    if (parseTimeToMinutes(end) <= parseTimeToMinutes(start)) {
-      alert("End time must be after start time.");
-      return;
-    }
+  if (selDay) {
+    selDay.addEventListener("change", (e) => {
+      APP_DATA.scheduleDetailedDay = e.target.value;
+      renderScheduleView();
+    });
+  }
 
-    const blockData = {
-      memberId,
-      dateKey,
-      start,
-      end,
-      type: activeType,
-      taskId: activeType === "work" ? document.getElementById("input-block-task-id").value : null,
-      reason: activeType === "busy" ? document.getElementById("input-block-reason").value.trim() || t("status_busy") : null
-    };
+  const matBtnTeam = document.getElementById("mat-btn-team");
+  const matBtnIndiv = document.getElementById("mat-btn-indiv");
+  const matPersonSelect = document.getElementById("mat-person-select");
+  if (matBtnTeam && matBtnIndiv && matPersonSelect) {
+    matBtnTeam.addEventListener("click", () => {
+      matBtnTeam.classList.add("active");
+      matBtnIndiv.classList.remove("active");
+      matPersonSelect.style.display = "none";
+      APP_DATA.matrixFilterMode = "team";
+      renderEisenhowerMatrix();
+    });
+    matBtnIndiv.addEventListener("click", () => {
+      matBtnIndiv.classList.add("active");
+      matBtnTeam.classList.remove("active");
+      matPersonSelect.style.display = "inline-block";
+      APP_DATA.matrixFilterMode = "individual";
+      renderEisenhowerMatrix();
+    });
+  }
 
-    if (existingId) {
-      const idx = APP_DATA.blocks.findIndex((b) => b.id === existingId);
-      if (idx !== -1) APP_DATA.blocks[idx] = { id: existingId, ...blockData };
-    } else {
-      APP_DATA.blocks.push({ id: `b_${Date.now()}`, ...blockData });
-    }
+  const quickBlock = document.getElementById("me-quick-add-block");
+  const quickTask = document.getElementById("me-quick-add-task");
+  const copyWeek = document.getElementById("btn-copy-prev-week");
 
-    closeAllOverlays();
-    refreshAllActiveViews();
-  });
+  if (quickBlock) {
+    quickBlock.addEventListener("click", () => {
+      openBlockInputModal(APP_DATA.currentUserId, "2026-09-18", "09:00", "11:00");
+    });
+  }
 
-  // Delete Block
-  document.getElementById("btn-delete-block").addEventListener("click", () => {
-    const existingId = document.getElementById("input-block-id").value;
-    if (existingId) {
-      APP_DATA.blocks = APP_DATA.blocks.filter((b) => b.id !== existingId);
+  if (quickTask && taskModal) {
+    quickTask.addEventListener("click", () => {
+      document.getElementById("input-task-owner").value = APP_DATA.currentUserId;
+      openModal(taskModal);
+    });
+  }
+
+  if (copyWeek) {
+    copyWeek.addEventListener("click", () => {
+      const memberId = APP_DATA.currentUserId;
+      const week1Blocks = APP_DATA.blocks.filter((b) => b.memberId === memberId && APP_DATA.days.find((d) => d.key === b.dateKey)?.in1w);
+
+      week1Blocks.forEach((b) => {
+        const dayIndex = APP_DATA.days.findIndex((d) => d.key === b.dateKey);
+        if (dayIndex !== -1 && dayIndex + 7 < APP_DATA.days.length) {
+          const nextWeekKey = APP_DATA.days[dayIndex + 7].key;
+          APP_DATA.blocks.push({
+            id: `b_${Date.now()}_${Math.random()}`,
+            memberId: b.memberId,
+            dateKey: nextWeekKey,
+            start: b.start,
+            end: b.end,
+            type: b.type,
+            taskId: b.taskId || null,
+            reason: b.reason || null
+          });
+        }
+      });
+      refreshAllActiveViews();
+      alert("Copied week 1 blocks to week 2.");
+    });
+  }
+
+  const formSched = document.getElementById("form-schedule-block");
+  if (formSched) {
+    formSched.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const existingId = document.getElementById("input-block-id").value;
+      const memberId = parseInt(document.getElementById("input-block-member-id").value);
+      const dateKey = document.getElementById("input-block-date").value;
+      const start = document.getElementById("input-block-start").value;
+      const end = document.getElementById("input-block-end").value;
+      const activeType = document.querySelector("#block-type-selector .btn-type-pill.active").getAttribute("data-type");
+
+      if (parseTimeToMinutes(end) <= parseTimeToMinutes(start)) {
+        alert("End time must be after start time.");
+        return;
+      }
+
+      const blockData = {
+        memberId,
+        dateKey,
+        start,
+        end,
+        type: activeType,
+        taskId: activeType === "work" ? document.getElementById("input-block-task-id").value : null,
+        reason: activeType === "busy" ? document.getElementById("input-block-reason").value.trim() || t("status_busy") : null
+      };
+
+      if (existingId) {
+        const idx = APP_DATA.blocks.findIndex((b) => b.id === existingId);
+        if (idx !== -1) APP_DATA.blocks[idx] = { id: existingId, ...blockData };
+      } else {
+        APP_DATA.blocks.push({ id: `b_${Date.now()}`, ...blockData });
+      }
+
       closeAllOverlays();
       refreshAllActiveViews();
-    }
-  });
-
-  // Inline Task Creation Trigger
-  document.getElementById("btn-create-task-inline").addEventListener("click", () => {
-    closeAllOverlays();
-    setTimeout(() => openModal(taskModal), 120);
-  });
-
-  // Save Task Form
-  document.getElementById("form-add-task").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const title = document.getElementById("input-task-title").value.trim();
-    const ownerId = parseInt(document.getElementById("input-task-owner").value);
-    const deadlineDate = document.getElementById("input-task-deadline-date").value;
-    const timeVal = document.getElementById("input-task-deadline-time").value;
-    const isImportant = document.querySelector("#group-is-important .pill.active").getAttribute("data-val") === "true";
-    const isUrgent = document.querySelector("#group-is-urgent .pill.active").getAttribute("data-val") === "true";
-
-    let quad = "q4";
-    if (isImportant && isUrgent) quad = "q1";else
-    if (isImportant && !isUrgent) quad = "q2";else
-    if (!isImportant && isUrgent) quad = "q3";
-
-    APP_DATA.tasks.unshift({
-      id: `task-${Date.now()}`,
-      title,
-      ownerId,
-      deadlineDate,
-      deadlineTime: timeVal || null,
-      quadrant: quad,
-      urgent: isUrgent,
-      status: "In Progress",
-      note: ""
     });
+  }
 
-    closeAllOverlays();
-    document.getElementById("form-add-task").reset();
-    refreshAllActiveViews();
-  });
+  const btnDelBlock = document.getElementById("btn-delete-block");
+  if (btnDelBlock) {
+    btnDelBlock.addEventListener("click", () => {
+      const existingId = document.getElementById("input-block-id").value;
+      if (existingId) {
+        APP_DATA.blocks = APP_DATA.blocks.filter((b) => b.id !== existingId);
+        closeAllOverlays();
+        refreshAllActiveViews();
+      }
+    });
+  }
 
-  // Deadline Time Toggle
-  document.getElementById("btn-toggle-deadline-time").addEventListener("click", () => {
-    const box = document.getElementById("deadline-time-container");
-    const isHidden = box.style.display === "none";
-    box.style.display = isHidden ? "block" : "none";
-    document.getElementById("btn-toggle-deadline-time").innerText = isHidden ? "- Remove time" : t("btn_add_time");
-  });
+  const btnCreateInline = document.getElementById("btn-create-task-inline");
+  if (btnCreateInline && taskModal) {
+    btnCreateInline.addEventListener("click", () => {
+      closeAllOverlays();
+      setTimeout(() => openModal(taskModal), 120);
+    });
+  }
 
-  // Block Type Buttons
+  const formTask = document.getElementById("form-add-task");
+  if (formTask) {
+    formTask.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = document.getElementById("input-task-title").value.trim();
+      const ownerId = parseInt(document.getElementById("input-task-owner").value);
+      const deadlineDate = document.getElementById("input-task-deadline-date").value;
+      const timeVal = document.getElementById("input-task-deadline-time").value;
+      const isImportant = document.querySelector("#group-is-important .pill.active").getAttribute("data-val") === "true";
+      const isUrgent = document.querySelector("#group-is-urgent .pill.active").getAttribute("data-val") === "true";
+
+      let quad = "q4";
+      if (isImportant && isUrgent) quad = "q1";
+      else if (isImportant && !isUrgent) quad = "q2";
+      else if (!isImportant && isUrgent) quad = "q3";
+
+      APP_DATA.tasks.unshift({
+        id: `task-${Date.now()}`,
+        title,
+        ownerId,
+        deadlineDate,
+        deadlineTime: timeVal || null,
+        quadrant: quad,
+        urgent: isUrgent,
+        status: "In Progress",
+        note: ""
+      });
+
+      closeAllOverlays();
+      formTask.reset();
+      refreshAllActiveViews();
+    });
+  }
+
+  const btnToggleDead = document.getElementById("btn-toggle-deadline-time");
+  if (btnToggleDead) {
+    btnToggleDead.addEventListener("click", () => {
+      const box = document.getElementById("deadline-time-container");
+      const isHidden = box.style.display === "none";
+      box.style.display = isHidden ? "block" : "none";
+      btnToggleDead.innerText = isHidden ? "- Remove time" : t("btn_add_time");
+    });
+  }
+
   document.querySelectorAll("#block-type-selector .btn-type-pill").forEach((p) => {
     p.addEventListener("click", function () {
       setBlockTypeActive(this.getAttribute("data-type"));
     });
   });
 
-  // Find a Time Triggers
-  document.getElementById("open-find-time").addEventListener("click", () => openModal(findModal));
-  document.getElementById("btn-run-find").addEventListener("click", runFindCalculation);
+  const btnOpenFind = document.getElementById("open-find-time");
+  const btnRunFind = document.getElementById("btn-run-find");
+  if (btnOpenFind && findModal) btnOpenFind.addEventListener("click", () => openModal(findModal));
+  if (btnRunFind) btnRunFind.addEventListener("click", runFindCalculation);
 
-  // Close Overlays
   document.querySelectorAll(".btn-close, #close-block-modal, #close-add-task, #close-find-modal, #close-drawer").forEach((btn) => {
     btn.addEventListener("click", closeAllOverlays);
   });
-  overlay.addEventListener("click", closeAllOverlays);
+  if (overlay) overlay.addEventListener("click", closeAllOverlays);
 
   setupPillToggle("#group-is-important");
   setupPillToggle("#group-is-urgent");
@@ -1640,7 +1750,6 @@ function setupPillToggle(selector) {
 function initPersonPickers() {
   const activeRoster = getActiveMembers();
 
-  // Populate member dropdowns
   const userSelects = ["sched-person-select", "mat-person-select", "input-task-owner", "me-user-switcher"];
   userSelects.forEach((id) => {
     const el = document.getElementById(id);
@@ -1655,45 +1764,65 @@ function initPersonPickers() {
     }
   });
 
-  document.getElementById("sched-single-day-select").innerHTML =
-  APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
-  document.getElementById("input-task-deadline-date").innerHTML =
-  APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
+  const daySel = document.getElementById("sched-single-day-select");
+  const taskDeadSel = document.getElementById("input-task-deadline-date");
 
-  // Multi-person picker for Find a Time
-  document.getElementById("person-picker").innerHTML = activeRoster.map((m) => `
-    <label class="person-check-label">
-      <input type="checkbox" value="${m.id}" checked class="person-checkbox">
-      <span>${m.name}</span>
-    </label>
-  `).join("");
+  if (daySel) {
+    daySel.innerHTML = APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
+  }
+  if (taskDeadSel) {
+    taskDeadSel.innerHTML = APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
+  }
 
-  document.querySelectorAll("#person-picker .person-checkbox").forEach((cb) => {
-    cb.addEventListener("change", updateMinSelectOptions);
-  });
+  const picker = document.getElementById("person-picker");
+  if (picker) {
+    picker.innerHTML = activeRoster.map((m) => `
+      <label class="person-check-label">
+        <input type="checkbox" value="${m.id}" checked class="person-checkbox">
+        <span>${m.name}</span>
+      </label>
+    `).join("");
+
+    document.querySelectorAll("#person-picker .person-checkbox").forEach((cb) => {
+      cb.addEventListener("change", updateMinSelectOptions);
+    });
+  }
 
   document.querySelectorAll("#people-scope-selector .pill").forEach((p) => {
     p.addEventListener("click", function () {
       this.parentElement.querySelectorAll(".pill").forEach((el) => el.classList.remove("active"));
       this.classList.add("active");
       const isSelect = this.getAttribute("data-scope") === "select";
-      document.getElementById("person-picker").style.display = isSelect ? "grid" : "none";
+      const pPicker = document.getElementById("person-picker");
+      if (pPicker) pPicker.style.display = isSelect ? "grid" : "none";
       updateMinSelectOptions();
     });
   });
 
-  document.getElementById("sched-person-select").addEventListener("change", (e) => {
-    APP_DATA.scheduleSelectedPersonId = parseInt(e.target.value);
-    renderScheduleView();
-  });
-  document.getElementById("mat-person-select").addEventListener("change", (e) => {
-    APP_DATA.matrixSelectedMemberId = parseInt(e.target.value);
-    renderEisenhowerMatrix();
-  });
-  document.getElementById("me-user-switcher").addEventListener("change", (e) => {
-    APP_DATA.currentUserId = parseInt(e.target.value);
-    renderMePage();
-  });
+  const schedPersonSel = document.getElementById("sched-person-select");
+  const matPersonSel = document.getElementById("mat-person-select");
+  const meUserSw = document.getElementById("me-user-switcher");
+
+  if (schedPersonSel) {
+    schedPersonSel.addEventListener("change", (e) => {
+      APP_DATA.scheduleSelectedPersonId = parseInt(e.target.value);
+      renderScheduleView();
+    });
+  }
+
+  if (matPersonSel) {
+    matPersonSel.addEventListener("change", (e) => {
+      APP_DATA.matrixSelectedMemberId = parseInt(e.target.value);
+      renderEisenhowerMatrix();
+    });
+  }
+
+  if (meUserSw) {
+    meUserSw.addEventListener("change", (e) => {
+      APP_DATA.currentUserId = parseInt(e.target.value);
+      renderMePage();
+    });
+  }
 
   updateMinSelectOptions();
 }
@@ -1720,13 +1849,13 @@ function updateMinSelectOptions() {
 }
 
 /* ==========================================================================
-   DYNAMIC FIND A TIME (ACCURATE TO DURATION IN MINUTES)
+   DYNAMIC FIND A TIME
    ========================================================================== */
 function runFindCalculation() {
   const scope = document.querySelector("#people-scope-selector .pill.active").getAttribute("data-scope");
   const selectedIds = scope === "everyone" ?
-  getActiveMembers().map((m) => m.id) :
-  Array.from(document.querySelectorAll(".person-checkbox:checked")).map((el) => parseInt(el.value));
+    getActiveMembers().map((m) => m.id) :
+    Array.from(document.querySelectorAll(".person-checkbox:checked")).map((el) => parseInt(el.value));
 
   const durationMin = parseInt(document.querySelector("#duration-selector .pill.active").getAttribute("data-minutes")) || 120;
   const minRequired = parseInt(document.getElementById("min-people-select").value) || 1;
@@ -1734,15 +1863,17 @@ function runFindCalculation() {
   const resultsContainer = document.getElementById("find-results");
   const resultList = document.getElementById("result-items");
 
+  if (!resultsContainer || !resultList) return;
+
   resultsContainer.style.display = "block";
   const matches = [];
 
   days.forEach((day) => {
     const checkRanges = [
-    { start: 540, end: 720 },
-    { start: 780, end: 1020 },
-    { start: 1080, end: 1260 }];
-
+      { start: 540, end: 720 },
+      { start: 780, end: 1020 },
+      { start: 1080, end: 1260 }
+    ];
 
     checkRanges.forEach((windowRange) => {
       for (let s = windowRange.start; s + durationMin <= windowRange.end; s += 60) {
@@ -1775,11 +1906,14 @@ function runFindCalculation() {
 }
 
 function openModal(modalEl) {
-  document.getElementById("overlay").classList.add("active");
+  if (!modalEl) return;
+  const overlay = document.getElementById("overlay");
+  if (overlay) overlay.classList.add("active");
   modalEl.classList.add("active");
 }
 
 function closeAllOverlays() {
-  document.getElementById("overlay").classList.remove("active");
+  const overlay = document.getElementById("overlay");
+  if (overlay) overlay.classList.remove("active");
   document.querySelectorAll(".modal, .drawer").forEach((el) => el.classList.remove("active"));
 }
