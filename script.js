@@ -1,1919 +1,386 @@
-/* ==========================================================================
-   FIREBASE INITIALIZATION & AUTH SYSTEM
-   ========================================================================== */
-const firebaseConfig = {
-  apiKey: "AIzaSyCuraBGP70g64YzTkIknr1mTsY9xQrpjFs",
-  authDomain: "time-team-ccc31.firebaseapp.com",
-  projectId: "time-team-ccc31",
-  storageBucket: "time-team-ccc31.firebasestorage.app",
-  messagingSenderId: "378099824478",
-  appId: "1:378099824478:web:9e6a42ec53119a717141cf",
-  measurementId: "G-8S1Y7V9X2T"
-};
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeamSync</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-let auth = null;
-let provider = null;
+  <!-- แถบนำทางด้านบน -->
+  <header class="top-nav" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: #fff; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <h2 style="margin: 0; font-size: 1.25rem;">TeamSync</h2>
+      <nav style="display: flex; gap: 8px;">
+        <button class="nav-btn active" data-view="overview" data-i18n="nav_overview">ภาพรวม</button>
+        <button class="nav-btn" data-view="schedule" data-i18n="nav_schedule">ตารางเวลา</button>
+        <button class="nav-btn" data-view="matrix" data-i18n="nav_matrix">แมทริกซ์</button>
+        <button class="nav-btn" data-view="me" data-i18n="nav_me">ของฉัน</button>
+      </nav>
+    </div>
 
-if (typeof firebase !== "undefined") {
-  if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
-  auth = firebase.auth();
-  provider = new firebase.auth.GoogleAuthProvider();
-}
+    <!-- ส่วนปุ่มเข้าสู่ระบบ / ข้อมูลโปรไฟล์ -->
+    <div id="auth-container" style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; gap: 4px; margin-right: 8px;">
+        <button id="lang-th" class="lang-btn active">ไทย</button>
+        <button id="lang-en" class="lang-btn">English</button>
+      </div>
 
-function initAuthHandlers() {
-  const btnLogin = document.getElementById("btn-login");
-  const btnLogout = document.getElementById("btn-logout");
-  const userInfo = document.getElementById("user-info");
-  const userName = document.getElementById("user-name");
-  const userAvatar = document.getElementById("user-avatar");
+      <button id="btn-login" onclick="handleGoogleLogin()" style="padding: 7px 16px; border-radius: 20px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        🔑 เข้าสู่ระบบด้วย Google
+      </button>
 
-  if (btnLogin && auth) {
-    btnLogin.onclick = () => {
-      auth.signInWithPopup(provider).catch((error) => {
-        alert("เข้าสู่ระบบไม่สำเร็จ: " + error.message);
-      });
-    };
-  }
+      <div id="user-info" style="display: none; align-items: center; gap: 8px; background: #f5f5f5; padding: 4px 12px; border-radius: 20px;">
+        <img id="user-avatar" src="" alt="Profile" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+        <span id="user-name" style="font-size: 13px; font-weight: 600;"></span>
+        <button id="btn-logout" onclick="handleGoogleLogout()" style="padding: 3px 8px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 11px; margin-left: 4px;">ออก</button>
+      </div>
 
-  if (btnLogout && auth) {
-    btnLogout.onclick = () => {
-      auth.signOut();
-    };
-  }
+      <button id="btn-open-team-settings" style="background: none; border: none; cursor: pointer; font-size: 1.1rem;" title="ตั้งค่าทีม">⚙️</button>
+    </div>
+  </header>
 
-  if (auth) {
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        if (btnLogin) btnLogin.style.display = "none";
-        if (userInfo) userInfo.style.display = "flex";
-        if (userName) userName.textContent = user.displayName;
-        if (userAvatar) userAvatar.src = user.photoURL;
-      } else {
-        if (btnLogin) btnLogin.style.display = "block";
-        if (userInfo) userInfo.style.display = "none";
-      }
-    });
-  }
-}
-
-/* ==========================================================================
-   TRANSLATION DICTIONARY (THAI / ENGLISH)
-   ========================================================================== */
-const I18N = {
-  th: {
-    nav_overview: "ภาพรวม",
-    nav_schedule: "ตารางเวลา",
-    nav_matrix: "แมทริกซ์",
-    nav_me: "ของฉัน",
-    btn_1week: "1 สัปดาห์",
-    btn_2weeks: "2 สัปดาห์",
-    btn_find_time: "ค้นหาเวลาว่าง",
-    ov_title: "ภาพรวมทีม",
-    ov_subtitle: (count) => `ความพร้อม ตารางเวลา และภาพรวมงานสำคัญของสมาชิก ${count} คน`,
-    best_shared_title: "ช่วงเวลาที่ว่างพร้อมกันมากที่สุด",
-    best_shared_caption: (days) => `ช่วงเวลาแนะนำที่ดีที่สุดในอีก ${days} วันข้างหน้า`,
-    top_3_recs: "3 อันดับแนะนำ",
-    team_sched_ov_title: "ภาพรวมตารางเวลาทีม",
-    team_sched_ov_desc: "สแกนแนวนอนดูรายคน หรือแนวตั้งดูความพร้อมของทั้งทีม",
-    status_free: "ว่าง",
-    status_available: "ว่าง",
-    status_working: "กำลังทำงาน",
-    status_work: "ทำงาน",
-    status_busy: "ติดธุระ",
-    status_nodata: "ไม่มีข้อมูล",
-    status_live: "สด",
-    team_now_title: "สถานะทีมตอนนี้",
-    pri_snapshot_title: "ภาพรวมความสำคัญงาน",
-    btn_open_matrix: "เปิดแมทริกซ์ →",
-    upcoming_deadlines_title: "เดดไลน์ที่ใกล้ถึง",
-    sched_page_title: "ตารางการทำงาน",
-    scope_team: "ทีม",
-    scope_person: "รายบุคคล",
-    mode_overview: "ภาพรวม",
-    mode_detailed: "ละเอียด",
-    matrix_page_title: "แมทริกซ์จัดลำดับความสำคัญ",
-    matrix_page_desc: "กรอบการตัดสินใจ Eisenhower 2×2 และการกระจายภาระงานของทีม",
-    btn_add_task: "+ งาน",
-    btn_add_block: "+ ลงเวลา",
-    btn_copy_week: "คัดลอกสัปดาห์ก่อนหน้า",
-    acting_as: "ใช้งานในชื่อ:",
-    me_subtitle: "ลงเวลาทำงาน งานที่ได้รับมอบหมาย และสัดส่วนความสำคัญส่วนตัว",
-    my_schedule_title: "ตารางเวลาของฉัน",
-    my_tasks_title: "งานของฉัน",
-    my_priority_title: "สัดส่วนความสำคัญงานของฉัน",
-    q1_name: "สำคัญ + เร่งด่วน",
-    q2_name: "สำคัญ + ไม่เร่งด่วน",
-    q3_name: "ไม่สำคัญ + เร่งด่วน",
-    q4_name: "ไม่สำคัญ + ไม่เร่งด่วน",
-    label_date: "วันที่",
-    label_start_time: "เวลาเริ่ม [HH:mm]",
-    label_end_time: "เวลาสิ้นสุด [HH:mm]",
-    label_shortcuts: "ปุ่มลัด:",
-    label_status: "สถานะ",
-    label_linked_task: "ผูกกับงาน",
-    btn_create_task_inline: "+ สร้างงานใหม่",
-    label_short_reason: "ระบุเหตุผลสั้น ๆ",
-    btn_clear_block: "ลบบล็อกนี้",
-    btn_save_block: "บันทึกบล็อกเวลา",
-    block_modal_desc: "ระบุเวลาละเอียดระดับนาที",
-    new_task_title: "สร้างงานใหม่",
-    new_task_desc: "กำหนดเดดไลน์และระดับความสำคัญ",
-    label_task_title: "ชื่องาน",
-    label_assignee: "ผู้รับผิดชอบ",
-    label_deadline_date: "วันที่ส่ง (Deadline)",
-    btn_add_time: "+ เพิ่มเวลา",
-    label_deadline_time: "เวลาส่ง [HH:mm]",
-    label_is_important: "งานนี้สำคัญหรือไม่?",
-    label_is_urgent: "งานนี้เร่งด่วนหรือไม่?",
-    choice_yes: "ใช่",
-    choice_no: "ไม่ใช่",
-    btn_save_task: "บันทึกงาน",
-    find_time_modal_title: "ค้นหาเวลาว่างพร้อมกัน",
-    find_time_modal_desc: "คำนวณจากตารางเวลาจริงของสมาชิกที่เปิดใช้งาน",
-    label_duration: "ระยะเวลาที่ต้องการ",
-    label_people: "ผู้เข้าร่วม",
-    scope_everyone: (count) => `ทุกคน (${count})`,
-    scope_select_members: "เลือกบางคน",
-    label_min_people: "จำนวนคนที่ต้องว่างอย่างน้อย",
-    btn_find_matches: "ค้นหาช่วงเวลา",
-    results_heading: "ผลการค้นหา",
-    drawer_meta: "ตรวจสอบรายละเอียด",
-    team_settings_title: "ตั้งค่าทีมและสมาชิก",
-    team_settings_desc: "จัดการสมาชิกทีม สถานะใช้งาน และขนาดของทีม",
-    btn_add_member: "+ เพิ่มสมาชิก",
-    th_member_name: "ชื่อสมาชิก",
-    th_status: "สถานะ",
-    th_actions: "จัดการ",
-    status_active: "ใช้งานอยู่",
-    status_inactive: "ปิดใช้งาน",
-    btn_toggle_active: "เปลี่ยนสถานะ",
-    btn_edit_name: "แก้ไข",
-    empty_no_tasks: "ไม่มีงานในช่องนี้",
-    empty_no_assigned: "ไม่มีงานที่ได้รับมอบหมาย",
-    empty_no_slots: "ไม่พบช่วงเวลาที่ตรงตามเกณฑ์ที่กำหนด",
-    insight_urgent: (c) => `<strong>${c} งาน</strong> ครบกำหนดภายใน 48 ชั่วโมง`,
-    insight_unassigned: (c) => `<strong>${c} งานสำคัญ</strong> ยังไม่มีการลงเวลาทำงานในตาราง`,
-    mutual_availability: "ความพร้อมของทีม:",
-    inspect_arrow: "ตรวจสอบ →"
-  },
-  en: {
-    nav_overview: "Overview",
-    nav_schedule: "Schedule",
-    nav_matrix: "Matrix",
-    nav_me: "Me",
-    btn_1week: "1 Week",
-    btn_2weeks: "2 Weeks",
-    btn_find_time: "Find a Time",
-    ov_title: "Team Overview",
-    ov_subtitle: (count) => `Capacity, schedule timeline, and priority snapshot for ${count} members`,
-    best_shared_title: "Best Shared Time",
-    best_shared_caption: (days) => `Optimal mutual slots for next ${days} days`,
-    top_3_recs: "Top 3 recommendations",
-    team_sched_ov_title: "Team Schedule Overview",
-    team_sched_ov_desc: "Scan rows for member timeline or columns for team availability",
-    status_free: "Free",
-    status_available: "Available",
-    status_working: "Working",
-    status_work: "Work",
-    status_busy: "Busy",
-    status_nodata: "No Data",
-    status_live: "Live",
-    team_now_title: "Team Now",
-    pri_snapshot_title: "Priority Snapshot",
-    btn_open_matrix: "Open Matrix →",
-    upcoming_deadlines_title: "Upcoming Deadlines",
-    sched_page_title: "Operational Schedule",
-    scope_team: "Team",
-    scope_person: "Person",
-    mode_overview: "Overview",
-    mode_detailed: "Detailed",
-    matrix_page_title: "Priority Matrix",
-    matrix_page_desc: "Eisenhower 2×2 decision framework and team workload distribution",
-    btn_add_task: "+ Task",
-    btn_add_block: "+ Schedule Block",
-    btn_copy_week: "Copy previous week",
-    acting_as: "Acting as:",
-    me_subtitle: "Schedule input, active work tasks and priority load",
-    my_schedule_title: "My Schedule",
-    my_tasks_title: "My Tasks",
-    my_priority_title: "My Priority Distribution",
-    q1_name: "Important + Urgent",
-    q2_name: "Important + Not Urgent",
-    q3_name: "Not Important + Urgent",
-    q4_name: "Not Important + Not Urgent",
-    label_date: "Date",
-    label_start_time: "Start Time [HH:mm]",
-    label_end_time: "End Time [HH:mm]",
-    label_shortcuts: "Shortcuts:",
-    label_status: "Status",
-    label_linked_task: "Linked Task",
-    btn_create_task_inline: "+ Create New Task",
-    label_short_reason: "Short Reason",
-    btn_clear_block: "Clear Block",
-    btn_save_block: "Save Block",
-    block_modal_desc: "Accurate to the minute",
-    new_task_title: "New Task",
-    new_task_desc: "Define deadline and priority classification",
-    label_task_title: "Task Title",
-    label_assignee: "Assignee",
-    label_deadline_date: "Deadline Date",
-    btn_add_time: "+ Add time",
-    label_deadline_time: "Deadline Time [HH:mm]",
-    label_is_important: "Is this Important?",
-    label_is_urgent: "Is this Urgent?",
-    choice_yes: "Yes",
-    choice_no: "No",
-    btn_save_task: "Save Task",
-    find_time_modal_title: "Find a Time",
-    find_time_modal_desc: "Calculated from actual schedule data of active members",
-    label_duration: "Duration",
-    label_people: "People",
-    scope_everyone: (count) => `Everyone (${count})`,
-    scope_select_members: "Select People",
-    label_min_people: "Minimum Available People",
-    btn_find_matches: "Find Matches",
-    results_heading: "Matching Slots",
-    drawer_meta: "INSPECTOR",
-    team_settings_title: "Team & Member Settings",
-    team_settings_desc: "Manage team roster, active status and capacity size",
-    btn_add_member: "+ Add Member",
-    th_member_name: "Member Name",
-    th_status: "Status",
-    th_actions: "Actions",
-    status_active: "Active",
-    status_inactive: "Inactive",
-    btn_toggle_active: "Toggle Status",
-    btn_edit_name: "Rename",
-    empty_no_tasks: "No tasks in this quadrant",
-    empty_no_assigned: "No tasks assigned to you",
-    empty_no_slots: "No mutual slots match your criteria",
-    insight_urgent: (c) => `<strong>${c} tasks</strong> due within 48 hours`,
-    insight_unassigned: (c) => `<strong>${c} important tasks</strong> have no scheduled work time`,
-    mutual_availability: "Mutual Availability:",
-    inspect_arrow: "Inspect →"
-  }
-};
-
-let currentLang = "th";
-function t(key, ...args) {
-  const dict = I18N[currentLang] || I18N.th;
-  const val = dict[key];
-  if (typeof val === "function") return val(...args);
-  return val || key;
-}
-
-/* ==========================================================================
-   CENTRAL DATA ARCHITECTURE
-   ========================================================================== */
-const APP_DATA = {
-  activeView: "overview",
-  overviewRange: "2w",
-
-  scheduleScope: "team",
-  scheduleMode: "overview",
-  scheduleSelectedPersonId: 1,
-  scheduleRange: "2w",
-  scheduleDetailedDay: "2026-09-18",
-
-  matrixFilterMode: "team",
-  matrixSelectedMemberId: 1,
-  currentUserId: 1,
-
-  quadrants: {
-    q1: { code: "q1", labelKey: "q1_name", css: "pri-q1" },
-    q2: { code: "q2", labelKey: "q2_name", css: "pri-q2" },
-    q3: { code: "q3", labelKey: "q3_name", css: "pri-q3" },
-    q4: { code: "q4", labelKey: "q4_name", css: "pri-q4" }
-  },
-
-  days: [
-    { key: "2026-09-18", dateStr: "Thu 18 Sep", short: "18 Sep", in1w: true },
-    { key: "2026-09-19", dateStr: "Fri 19 Sep", short: "19 Sep", in1w: true },
-    { key: "2026-09-20", dateStr: "Sat 20 Sep", short: "20 Sep", in1w: true },
-    { key: "2026-09-21", dateStr: "Sun 21 Sep", short: "21 Sep", in1w: true },
-    { key: "2026-09-22", dateStr: "Mon 22 Sep", short: "22 Sep", in1w: true },
-    { key: "2026-09-23", dateStr: "Tue 23 Sep", short: "23 Sep", in1w: true },
-    { key: "2026-09-24", dateStr: "Wed 24 Sep", short: "24 Sep", in1w: true },
-    { key: "2026-09-25", dateStr: "Thu 25 Sep", short: "25 Sep", in1w: false },
-    { key: "2026-09-26", dateStr: "Fri 26 Sep", short: "26 Sep", in1w: false },
-    { key: "2026-09-27", dateStr: "Sat 27 Sep", short: "27 Sep", in1w: false },
-    { key: "2026-09-28", dateStr: "Sun 28 Sep", short: "28 Sep", in1w: false },
-    { key: "2026-09-29", dateStr: "Mon 29 Sep", short: "29 Sep", in1w: false },
-    { key: "2026-09-30", dateStr: "Tue 30 Sep", short: "30 Sep", in1w: false },
-    { key: "2026-10-01", dateStr: "Wed 01 Oct", short: "01 Oct", in1w: false }
-  ],
-
-  periods: [
-    { key: "morning", label: "Morning", time: "09:00–12:00", startMin: 540, endMin: 720 },
-    { key: "afternoon", label: "Afternoon", time: "13:00–17:00", startMin: 780, endMin: 1020 },
-    { key: "evening", label: "Evening", time: "18:00–21:00", startMin: 1080, endMin: 1260 }
-  ],
-
-  members: [
-    { id: 1, name: "เอ", active: true },
-    { id: 2, name: "โบ", active: true },
-    { id: 3, name: "ฟ้า", active: true },
-    { id: 4, name: "กร", active: true },
-    { id: 5, name: "อุ้ม", active: true },
-    { id: 6, name: "แพร", active: true },
-    { id: 7, name: "แม็ก", active: true },
-    { id: 8, name: "นิ", active: true },
-    { id: 9, name: "ปิ่น", active: true },
-    { id: 10, name: "จ๊อบ", active: true }
-  ],
-
-  tasks: [
-    { id: "task-1", title: "Community Report", ownerId: 3, deadlineDate: "2026-09-19", deadlineTime: "17:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Waiting on regional survey results" },
-    { id: "task-2", title: "Budget Proposal", ownerId: 2, deadlineDate: "2026-09-20", deadlineTime: "12:00", quadrant: "q1", urgent: true, status: "Review", note: "Annual operational budget submission" },
-    { id: "task-3", title: "Event Poster Draft", ownerId: 5, deadlineDate: "2026-09-21", deadlineTime: null, quadrant: "q3", urgent: true, status: "Drafting", note: "Print and online formats" },
-    { id: "task-4", title: "Sponsor Outreach", ownerId: 7, deadlineDate: "2026-09-24", deadlineTime: "15:30", quadrant: "q2", urgent: false, status: "Outreach", note: "Pitch deck distribution to partners" },
-    { id: "task-5", title: "Backlog Grooming", ownerId: 1, deadlineDate: "2026-09-28", deadlineTime: null, quadrant: "q4", urgent: false, status: "Planned", note: "Review unscheduled tasks" },
-    { id: "task-6", title: "Research Synthesis", ownerId: 4, deadlineDate: "2026-09-30", deadlineTime: null, quadrant: "q2", urgent: false, status: "Writing", note: "Literature review chapter" },
-    { id: "task-7", title: "Safety Protocol Review", ownerId: 3, deadlineDate: "2026-09-20", deadlineTime: "10:00", quadrant: "q1", urgent: true, status: "In Progress", note: "Activity ground compliance" },
-    { id: "task-8", title: "Permit Clearance", ownerId: 3, deadlineDate: "2026-09-22", deadlineTime: null, quadrant: "q1", urgent: true, status: "Pending", note: "District office endorsement" },
-    { id: "task-9", title: "Speaker Briefing Deck", ownerId: 3, deadlineDate: "2026-09-23", deadlineTime: "14:00", quadrant: "q1", urgent: true, status: "Drafting", note: "Guideline deck for guest speakers" },
-    { id: "task-10", title: "Volunteer Alignment Call", ownerId: 8, deadlineDate: "2026-09-22", deadlineTime: "19:00", quadrant: "q3", urgent: true, status: "Scheduled", note: "Coordinate 15 logistics volunteers" }
-  ],
-
-  blocks: [
-    { id: "b1", memberId: 1, dateKey: "2026-09-18", start: "08:30", end: "12:00", type: "available" },
-    { id: "b2", memberId: 1, dateKey: "2026-09-18", start: "13:00", end: "17:00", type: "available" },
-    { id: "b3", memberId: 1, dateKey: "2026-09-18", start: "18:00", end: "20:30", type: "busy", reason: "Family dinner" },
-    { id: "b4", memberId: 2, dateKey: "2026-09-18", start: "09:40", end: "11:10", type: "work", taskId: "task-2" },
-    { id: "b5", memberId: 2, dateKey: "2026-09-18", start: "13:30", end: "17:00", type: "available" },
-    { id: "b6", memberId: 3, dateKey: "2026-09-18", start: "09:00", end: "12:00", type: "busy", reason: "Faculty Seminar" },
-    { id: "b7", memberId: 3, dateKey: "2026-09-18", start: "13:15", end: "14:45", type: "work", taskId: "task-1" },
-    { id: "b8", memberId: 3, dateKey: "2026-09-18", start: "15:00", end: "18:00", type: "available" },
-    { id: "b9", memberId: 4, dateKey: "2026-09-18", start: "08:00", end: "16:00", type: "available" },
-    { id: "b10", memberId: 5, dateKey: "2026-09-18", start: "09:00", end: "13:00", type: "available" },
-    { id: "b11", memberId: 5, dateKey: "2026-09-18", start: "14:00", end: "16:00", type: "work", taskId: "task-3" },
-    { id: "b12", memberId: 7, dateKey: "2026-09-18", start: "10:00", end: "15:30", type: "available" },
-    { id: "b13", memberId: 7, dateKey: "2026-09-18", start: "16:20", end: "17:05", type: "work", taskId: "task-4" },
-    { id: "b14", memberId: 8, dateKey: "2026-09-18", start: "08:30", end: "17:00", type: "available" },
-    { id: "b15", memberId: 9, dateKey: "2026-09-18", start: "09:00", end: "18:00", type: "available" },
-    { id: "b16", memberId: 10, dateKey: "2026-09-18", start: "13:00", end: "18:00", type: "busy", reason: "Field trip" }
-  ],
-
-  blockNotes: {
-    "b3": ["President: Family dinner noted."]
-  }
-};
-
-/* ==========================================================================
-   DYNAMIC ROSTER & AVAILABILITY HELPERS
-   ========================================================================== */
-function getActiveMembers() {
-  return APP_DATA.members.filter((m) => m.active);
-}
-
-function parseTimeToMinutes(tStr) {
-  if (!tStr) return 0;
-  const [h, m] = tStr.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function formatMinutesToTime(min) {
-  const h = String(Math.floor(min / 60)).padStart(2, '0');
-  const m = String(min % 60).padStart(2, '0');
-  return `${h}:${m}`;
-}
-
-function getMemberStatusInRange(memberId, dateKey, startMin, endMin) {
-  const memberBlocks = APP_DATA.blocks.filter((b) => b.memberId === memberId && b.dateKey === dateKey);
-  if (memberBlocks.length === 0) return { type: "nodata", reason: t("status_nodata") };
-
-  for (const b of memberBlocks) {
-    const bStart = parseTimeToMinutes(b.start);
-    const bEnd = parseTimeToMinutes(b.end);
-    if (bStart < endMin && bEnd > startMin) {
-      return b;
-    }
-  }
-  return { type: "nodata", reason: t("status_nodata") };
-}
-
-function calculateExactQuorum(dateKey, startMin, endMin, targetMemberIds = null) {
-  const activeRoster = getActiveMembers();
-  const members = targetMemberIds ?
-    activeRoster.filter((m) => targetMemberIds.includes(m.id)) :
-    activeRoster;
-
-  let availableCount = 0;
-  const conflicts = [];
-  const availableMembers = [];
-
-  members.forEach((m) => {
-    const status = getMemberStatusInRange(m.id, dateKey, startMin, endMin);
-    if (status.type === "available") {
-      availableCount++;
-      availableMembers.push(m);
-    } else {
-      let taskObj = status.taskId ? APP_DATA.tasks.find((t) => t.id === status.taskId) : null;
-      conflicts.push({
-        memberId: m.id,
-        name: m.name,
-        type: status.type,
-        reason: status.reason || (taskObj ? `${t("status_work")}: ${taskObj.title}` : t("status_busy")),
-        task: taskObj,
-        block: status
-      });
-    }
-  });
-
-  return { total: members.length, available: availableCount, conflicts, availableMembers };
-}
-
-function formatTaskDeadline(task) {
-  const day = APP_DATA.days.find((d) => d.key === task.deadlineDate);
-  const dateText = day ? day.short : task.deadlineDate;
-  return task.deadlineTime ? `${dateText} · ${task.deadlineTime}` : dateText;
-}
-
-function sortTasksByDeadline(a, b) {
-  const timeA = a.deadlineTime ? `${a.deadlineDate}T${a.deadlineTime}` : `${a.deadlineDate}T23:59`;
-  const timeB = b.deadlineTime ? `${b.deadlineDate}T${b.deadlineTime}` : `${b.deadlineDate}T23:59`;
-  return timeA.localeCompare(timeB);
-}
-
-/* ==========================================================================
-   APP INITIALIZATION & TRANSLATION ENGINE
-   ========================================================================== */
-function initEntireApp() {
-  initAuthHandlers();
-  setupNavigation();
-  setupGlobalControls();
-  initPersonPickers();
-  updateStaticTranslations();
-  refreshAllActiveViews();
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initEntireApp);
-} else {
-  initEntireApp();
-}
-
-function setLanguage(lang) {
-  currentLang = lang;
-  document.getElementById("lang-th").classList.toggle("active", lang === "th");
-  document.getElementById("lang-en").classList.toggle("active", lang === "en");
-  document.documentElement.lang = lang;
-  updateStaticTranslations();
-  refreshAllActiveViews();
-}
-
-function updateStaticTranslations() {
-  document.querySelectorAll("[data-i18n]").forEach((el) => {
-    const key = el.getAttribute("data-i18n");
-    el.innerHTML = t(key);
-  });
-}
-
-function setupNavigation() {
-  document.querySelectorAll("[data-view]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      APP_DATA.activeView = btn.getAttribute("data-view");
-      document.querySelectorAll(".page-view").forEach((v) => v.classList.remove("active"));
-      document.getElementById(`view-${APP_DATA.activeView}`).classList.add("active");
-      document.querySelectorAll("[data-view]").forEach((b) => b.classList.toggle("active", b.getAttribute("data-view") === APP_DATA.activeView));
-      refreshAllActiveViews();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
-  });
-
-  const btnTh = document.getElementById("lang-th");
-  const btnEn = document.getElementById("lang-en");
-  if (btnTh) btnTh.addEventListener("click", () => setLanguage("th"));
-  if (btnEn) btnEn.addEventListener("click", () => setLanguage("en"));
-}
-
-function refreshAllActiveViews() {
-  const activeCount = getActiveMembers().length;
-  const subtitleEl = document.getElementById("ov-team-subtitle");
-  const pillEl = document.getElementById("pill-everyone-label");
-  if (subtitleEl) subtitleEl.innerText = t("ov_subtitle", activeCount);
-  if (pillEl) pillEl.innerText = t("scope_everyone", activeCount);
-
-  renderOverviewSharedSlots();
-  renderOverviewSchedule();
-  renderTeamNowSummary();
-  renderOverviewMatrixSnapshot();
-  renderOverviewDeadlines();
-
-  renderScheduleView();
-  renderEisenhowerMatrix();
-  renderMePage();
-}
-
-/* ==========================================================================
-   VIEW 1: OVERVIEW IMPLEMENTATION
-   ========================================================================== */
-function renderOverviewSharedSlots() {
-  const container = document.getElementById("shared-time-list");
-  if (!container) return;
-
-  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
-  const candidateSlots = [];
-
-  days.forEach((day) => {
-    APP_DATA.periods.forEach((p) => {
-      const q = calculateExactQuorum(day.key, p.startMin, p.endMin);
-      candidateSlots.push({ day, period: p, quorum: q, score: q.available });
-    });
-  });
-
-  candidateSlots.sort((a, b) => b.score - a.score);
-  const top3 = candidateSlots.slice(0, 3);
-
-  container.innerHTML = top3.map((item, idx) => `
-    <div class="slot-card" onclick="openRangeInspector('${item.day.key}', ${item.period.startMin}, ${item.period.endMin}, '${item.day.dateStr} · ${item.period.label} (${item.period.time})')">
-      <div class="slot-rank">${t("top_3_recs")} #${idx + 1}</div>
-      <div class="slot-date">${item.day.dateStr}</div>
-      <div class="slot-time">${item.period.label} (${item.period.time})</div>
-      <div class="slot-capacity">
-        <span class="capacity-metric">${item.quorum.available} / ${item.quorum.total} ${t("status_available")}</span>
-        <span class="slot-arrow">${t("inspect_arrow")}</span>
+  <!-- หน้า 1: OVERVIEW -->
+  <main id="view-overview" class="page-view active" style="padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+      <div>
+        <h1 style="margin: 0 0 6px 0;" data-i18n="ov_title">ภาพรวมทีม</h1>
+        <p id="ov-team-subtitle" style="margin: 0; color: #666;"></p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-ov-1w" class="pill-btn" data-i18n="btn_1week">1 สัปดาห์</button>
+          <button id="btn-ov-2w" class="pill-btn active" data-i18n="btn_2weeks">2 สัปดาห์</button>
+        </div>
+        <button id="open-find-time" class="btn btn-dark" data-i18n="btn_find_time" style="background: #111; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">🕒 ค้นหาเวลาว่าง</button>
       </div>
     </div>
-  `).join("");
 
-  const captionEl = document.getElementById("best-shared-caption");
-  if (captionEl) {
-    captionEl.innerText = t("best_shared_caption", APP_DATA.overviewRange === '1w' ? '7' : '14');
-  }
-}
+    <!-- แนะนำ 3 อันดับ -->
+    <section style="margin-bottom: 30px;">
+      <h3 data-i18n="best_shared_title" style="margin-bottom: 4px;">ช่วงเวลาที่ว่างพร้อมกันมากที่สุด</h3>
+      <p id="best-shared-caption" style="margin: 0 0 16px 0; color: #777; font-size: 0.9rem;"></p>
+      <div id="shared-time-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
+    </section>
 
-function renderOverviewSchedule() {
-  const table = document.getElementById("team-schedule-table");
-  if (!table) return;
+    <!-- ตารางความพร้อมทีม -->
+    <section style="margin-bottom: 30px;">
+      <h3 data-i18n="team_sched_ov_title" style="margin-bottom: 4px;">ภาพรวมตารางเวลาทีม</h3>
+      <p data-i18n="team_sched_ov_desc" style="margin: 0 0 16px 0; color: #777; font-size: 0.9rem;">สแกนแนวนอนดูรายคน หรือแนวตั้งดูความพร้อมของทั้งทีม</p>
+      <div style="overflow-x: auto; background: #fff; border: 1px solid #eee; border-radius: 8px;">
+        <table id="team-schedule-table" style="width: 100%; border-collapse: collapse;"></table>
+      </div>
+    </section>
 
-  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
-  const periods = APP_DATA.periods;
-  const activeRoster = getActiveMembers();
-  const columns = [];
-
-  days.forEach((day) => {
-    periods.forEach((period) => {
-      const q = calculateExactQuorum(day.key, period.startMin, period.endMin);
-      const isHigh = q.total > 0 && q.available / q.total >= 0.8;
-      columns.push({ day, period, available: q.available, total: q.total, isHigh });
-    });
-  });
-
-  let thead = `
-    <thead>
-      <tr>
-        <th class="sticky-col sticky-col-header" rowspan="2">${t("th_member_name")}</th>
-        ${days.map((d) => `<th class="th-date-group" colspan="3">${d.short}</th>`).join("")}
-      </tr>
-      <tr>
-        ${columns.map((c) => `
-          <th class="th-seg ${c.isHigh ? 'col-subtle-tint' : ''}" title="${c.period.label}: ${c.available}/${c.total} ${t('status_free')}">
-            ${c.period.label[0]}
-          </th>
-        `).join("")}
-      </tr>
-    </thead>
-  `;
-
-  let quorumRow = `
-    <tr class="tr-quorum">
-      <td class="sticky-col" style="font-weight:700; color:var(--text-secondary); background:#F8F8F7;">${t("status_free")}</td>
-      ${columns.map((c) => `
-        <td class="td-quorum-cell ${c.isHigh ? 'col-highlight-high' : ''}">
-          ${c.available}/${c.total}
-        </td>
-      `).join("")}
-    </tr>
-  `;
-
-  let body = activeRoster.map((m) => {
-    let cells = columns.map((c) => {
-      const st = getMemberStatusInRange(m.id, c.day.key, c.period.startMin, c.period.endMin);
-      let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
-      return `
-        <td class="sched-grid-cell ${c.isHigh ? 'col-subtle-tint' : ''}">
-          <div class="compact-tile block-${st.type}" onclick="openRangeInspector('${c.day.key}', ${c.period.startMin}, ${c.period.endMin}, '${c.day.dateStr} · ${c.period.label}')">
-            ${label}
-          </div>
-        </td>
-      `;
-    }).join("");
-
-    return `<tr><td class="sticky-col">${m.name}</td>${cells}</tr>`;
-  }).join("");
-
-  table.innerHTML = `${thead}<tbody>${quorumRow}${body}</tbody>`;
-}
-
-function renderTeamNowSummary() {
-  const container = document.getElementById("team-now-list");
-  if (!container) return;
-  const counts = { available: 0, work: 0, busy: 0, nodata: 0 };
-  const todayKey = "2026-09-18";
-  const nowStart = 540;
-  const nowEnd = 720;
-  const activeRoster = getActiveMembers();
-
-  container.innerHTML = activeRoster.map((m) => {
-    const block = getMemberStatusInRange(m.id, todayKey, nowStart, nowEnd);
-    counts[block.type] = (counts[block.type] || 0) + 1;
-
-    let detail = t("status_free");
-    if (block.type === "work") {
-      const task = APP_DATA.tasks.find((t) => t.id === block.taskId);
-      detail = `${t("status_work")} · ${task ? task.title : 'Task'}`;
-    } else if (block.type === "busy") {
-      detail = `${t("status_busy")} · ${block.reason || 'Busy'}`;
-    } else if (block.type === "nodata") {
-      detail = t("status_nodata");
-    }
-
-    return `
-      <div class="team-row" onclick="openRangeInspector('${todayKey}', ${nowStart}, ${nowEnd}, '${m.name} · Morning')">
-        <div class="team-user-info">
-          <span class="dot dot-${block.type}"></span>
-          <span class="user-name">${m.name}</span>
+    <!-- สถานะสด และ Matrix สรุป -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <h3 data-i18n="team_now_title" style="margin-top: 0;">สถานะทีมตอนนี้</h3>
+        <div style="display: flex; gap: 12px; font-size: 0.85rem; margin-bottom: 12px;">
+          <span>ว่าง: <b id="count-available">0</b></span>
+          <span>ทำงาน: <b id="count-work">0</b></span>
+          <span>ติดธุระ: <b id="count-busy">0</b></span>
+          <span>ไม่มีข้อมูล: <b id="count-nodata">0</b></span>
         </div>
-        <div class="user-activity">
-          <span class="status-tag tag-${block.type}">${t("status_" + block.type)}</span>
-          <span>${detail}</span>
+        <div id="team-now-list"></div>
+      </section>
+
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <h3 data-i18n="pri_snapshot_title" style="margin-top: 0;">ภาพรวมความสำคัญงาน</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div style="background: #ffebee; padding: 10px; border-radius: 6px;">Q1 สำคัญ+เร่งด่วน: <b id="matrix-count-q1">0</b></div>
+          <div style="background: #e8f5e9; padding: 10px; border-radius: 6px;">Q2 สำคัญ+ไม่เร่งด่วน: <b id="matrix-count-q2">0</b></div>
+          <div style="background: #fff8e1; padding: 10px; border-radius: 6px;">Q3 ไม่สำคัญ+เร่งด่วน: <b id="matrix-count-q3">0</b></div>
+          <div style="background: #f5f5f5; padding: 10px; border-radius: 6px;">Q4 ทั่วไป: <b id="matrix-count-q4">0</b></div>
+        </div>
+        <div id="insight-urgent-count" style="font-size: 0.9rem; margin-bottom: 6px;"></div>
+        <div id="insight-unassigned-count" style="font-size: 0.9rem;"></div>
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #eee;">
+        <h4 data-i18n="upcoming_deadlines_title" style="margin: 0 0 10px 0;">เดดไลน์ที่ใกล้ถึง (<span id="deadline-range-label"></span>)</h4>
+        <div id="deadline-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- หน้า 2: SCHEDULE -->
+  <main id="view-schedule" class="page-view" style="display: none; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1 data-i18n="sched_page_title" style="margin: 0;">ตารางการทำงาน</h1>
+      <div style="display: flex; gap: 8px;">
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-sched-scope-team" class="pill-btn active" data-i18n="scope_team">ทีม</button>
+          <button id="btn-sched-scope-person" class="pill-btn" data-i18n="scope_person">รายบุคคล</button>
+        </div>
+        <select id="sched-person-select" style="display: none; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-sched-mode-overview" class="pill-btn active" data-i18n="mode_overview">ภาพรวม</button>
+          <button id="btn-sched-mode-detailed" class="pill-btn" data-i18n="mode_detailed">ละเอียด</button>
+        </div>
+        <div id="sched-range-control" class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="btn-sched-1w" class="pill-btn" data-i18n="btn_1week">1 สัปดาห์</button>
+          <button id="btn-sched-2w" class="pill-btn active" data-i18n="btn_2weeks">2 สัปดาห์</button>
+        </div>
+        <div id="sched-day-control" style="display: none; gap: 4px;">
+          <button id="btn-sched-prev-day" class="pill-btn">◀</button>
+          <select id="sched-single-day-select" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+          <button id="btn-sched-next-day" class="pill-btn">▶</button>
         </div>
       </div>
-    `;
-  }).join("");
+    </div>
+    <div id="sched-view-caption" style="color: #666; margin-bottom: 14px; font-size: 0.9rem;"></div>
+    <div id="schedule-viewport-container"></div>
+  </main>
 
-  const cAvail = document.getElementById("count-available");
-  const cWork = document.getElementById("count-work");
-  const cBusy = document.getElementById("count-busy");
-  const cNo = document.getElementById("count-nodata");
-
-  if (cAvail) cAvail.innerText = counts.available;
-  if (cWork) cWork.innerText = counts.work;
-  if (cBusy) cBusy.innerText = counts.busy;
-  if (cNo) cNo.innerText = counts.nodata;
-}
-
-function renderOverviewMatrixSnapshot() {
-  const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
-  let urgent48 = 0;
-
-  APP_DATA.tasks.forEach((t) => {
-    counts[t.quadrant] = (counts[t.quadrant] || 0) + 1;
-    if (t.urgent) urgent48++;
-  });
-
-  const mq1 = document.getElementById("matrix-count-q1");
-  const mq2 = document.getElementById("matrix-count-q2");
-  const mq3 = document.getElementById("matrix-count-q3");
-  const mq4 = document.getElementById("matrix-count-q4");
-  const insUrg = document.getElementById("insight-urgent-count");
-  const insUnass = document.getElementById("insight-unassigned-count");
-
-  if (mq1) mq1.innerText = counts.q1;
-  if (mq2) mq2.innerText = counts.q2;
-  if (mq3) mq3.innerText = counts.q3;
-  if (mq4) mq4.innerText = counts.q4;
-  if (insUrg) insUrg.innerHTML = t("insight_urgent", urgent48);
-
-  const unassignedImp = APP_DATA.tasks.filter((t) => (t.quadrant === "q1" || t.quadrant === "q2") && !APP_DATA.blocks.some((b) => b.taskId === t.id)).length;
-  if (insUnass) insUnass.innerHTML = t("insight_unassigned", unassignedImp);
-}
-
-function renderOverviewDeadlines() {
-  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
-  const dayKeys = days.map((d) => d.key);
-  const container = document.getElementById("deadline-list");
-  if (!container) return;
-
-  const lbl = document.getElementById("deadline-range-label");
-  if (lbl) lbl.innerText = APP_DATA.overviewRange === "1w" ? t("btn_1week") : t("btn_2weeks");
-
-  const tasksInRange = APP_DATA.tasks.filter((t) => dayKeys.includes(t.deadlineDate)).sort(sortTasksByDeadline);
-  if (tasksInRange.length === 0) {
-    container.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:8px 0;">${t("empty_no_tasks")}</div>`;
-    return;
-  }
-
-  container.innerHTML = tasksInRange.slice(0, 5).map((task) => {
-    const owner = APP_DATA.members.find((m) => m.id === task.ownerId);
-    const qInfo = APP_DATA.quadrants[task.quadrant];
-    return `
-      <div class="deadline-item" onclick="openTaskInspector('${task.id}')">
-        <div>
-          <div class="task-title">${task.title}</div>
-          <div class="task-meta">${t("label_assignee")}: ${owner ? owner.name : "Unassigned"}</div>
+  <!-- หน้า 3: MATRIX -->
+  <main id="view-matrix" class="page-view" style="display: none; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <h1 data-i18n="matrix_page_title" style="margin: 0 0 4px 0;">แมทริกซ์จัดลำดับความสำคัญ</h1>
+        <p data-i18n="matrix_page_desc" style="margin: 0; color: #666; font-size: 0.9rem;"></p>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <div class="pill-group" style="display: flex; background: #eee; padding: 2px; border-radius: 8px;">
+          <button id="mat-btn-team" class="pill-btn active" data-i18n="scope_team">ทีม</button>
+          <button id="mat-btn-indiv" class="pill-btn" data-i18n="scope_person">รายบุคคล</button>
         </div>
-        <div class="deadline-right">
-          <span class="deadline-due ${task.urgent ? 'due-urgent' : ''}">${formatTaskDeadline(task)}</span>
-          <span class="priority-pill ${qInfo.css}">${t(qInfo.labelKey)}</span>
+        <select id="mat-person-select" style="display: none; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+      </div>
+    </div>
+    <div style="display: flex; gap: 16px; margin-bottom: 16px; font-size: 0.9rem;">
+      <span>Q1: <b id="mat-sum-q1">0</b></span>
+      <span>Q2: <b id="mat-sum-q2">0</b></span>
+      <span>Q3: <b id="mat-sum-q3">0</b></span>
+      <span>Q4: <b id="mat-sum-q4">0</b></span>
+    </div>
+    <div id="mat-factual-insights" style="margin-bottom: 20px;"></div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="background: #ffebee; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q1: สำคัญ + เร่งด่วน</h4>
+          <span id="count-badge-q1" style="background: #c62828; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q1"></div>
+      </div>
+      <div style="background: #e8f5e9; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q2: สำคัญ + ไม่เร่งด่วน</h4>
+          <span id="count-badge-q2" style="background: #2e7d32; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q2"></div>
+      </div>
+      <div style="background: #fff8e1; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q3: ไม่สำคัญ + เร่งด่วน</h4>
+          <span id="count-badge-q3" style="background: #f57f17; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q3"></div>
+      </div>
+      <div style="background: #f5f5f5; padding: 16px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <h4 style="margin: 0 0 10px 0;">Q4: ไม่สำคัญ + ไม่เร่งด่วน</h4>
+          <span id="count-badge-q4" style="background: #757575; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">0</span>
+        </div>
+        <div id="eq-list-q4"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- หน้า 4: ME PAGE -->
+  <main id="view-me" class="page-view" style="display: none; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <h1 style="margin: 0 0 4px 0;"><span data-i18n="nav_me">ของฉัน</span>: <span id="me-heading-name">เอ</span></h1>
+        <p data-i18n="me_subtitle" style="margin: 0; color: #666; font-size: 0.9rem;"></p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label style="font-size: 0.9rem;" data-i18n="acting_as">ใช้งานในชื่อ:</label>
+        <select id="me-user-switcher" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button id="me-quick-add-block" class="btn" style="padding: 8px 14px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_add_block">+ ลงเวลา</button>
+      <button id="me-quick-add-task" class="btn" style="padding: 8px 14px; background: #eee; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_add_task">+ งาน</button>
+      <button id="btn-copy-prev-week" class="btn" style="padding: 8px 14px; background: #eee; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_copy_week">คัดลอกสัปดาห์ก่อนหน้า</button>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <h3 data-i18n="my_schedule_title" style="margin-top: 0;">ตารางเวลาของฉัน</h3>
+        <div id="me-schedule-display"></div>
+      </section>
+      <section style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 data-i18n="my_tasks_title" style="margin: 0;">งานของฉัน</h3>
+          <span id="me-task-count-badge" style="background: #eee; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;"></span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; font-size: 0.85rem;">
+          <span>Q1: <b id="me-count-q1">0</b></span>
+          <span>Q2: <b id="me-count-q2">0</b></span>
+          <span>Q3: <b id="me-count-q3">0</b></span>
+          <span>Q4: <b id="me-count-q4">0</b></span>
+        </div>
+        <div id="me-tasks-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Modals & Drawers -->
+  <div id="overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 900;"></div>
+
+  <!-- Modal: ลงเวลา (Block) -->
+  <div id="block-input-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 360px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 id="block-modal-heading" style="margin-top: 0;">ลงเวลา</h3>
+    <form id="form-schedule-block">
+      <input type="hidden" id="input-block-id">
+      <input type="hidden" id="input-block-member-id">
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_date">วันที่</label>
+        <select id="input-block-date" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+      </div>
+      <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <div style="flex: 1;">
+          <label data-i18n="label_start_time">เวลาเริ่ม</label>
+          <input type="time" id="input-block-start" style="width: 100%; padding: 6px; margin-top: 4px;" required>
+        </div>
+        <div style="flex: 1;">
+          <label data-i18n="label_end_time">เวลาสิ้นสุด</label>
+          <input type="time" id="input-block-end" style="width: 100%; padding: 6px; margin-top: 4px;" required>
         </div>
       </div>
-    `;
-  }).join("");
-}
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_status">สถานะ</label>
+        <div id="block-type-selector" style="display: flex; gap: 6px; margin-top: 4px;">
+          <button type="button" class="btn-type-pill active" data-type="available" style="flex: 1; padding: 6px;" data-i18n="status_available">ว่าง</button>
+          <button type="button" class="btn-type-pill" data-type="work" style="flex: 1; padding: 6px;" data-i18n="status_work">ทำงาน</button>
+          <button type="button" class="btn-type-pill" data-type="busy" style="flex: 1; padding: 6px;" data-i18n="status_busy">ติดธุระ</button>
+        </div>
+      </div>
+      <div id="block-work-section" style="display: none; margin-bottom: 10px;">
+        <label data-i18n="label_linked_task">ผูกกับงาน</label>
+        <select id="input-block-task-id" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+        <button type="button" id="btn-create-task-inline" style="background: none; border: none; color: blue; cursor: pointer; font-size: 0.8rem; margin-top: 4px;" data-i18n="btn_create_task_inline">+ สร้างงานใหม่</button>
+      </div>
+      <div id="block-busy-section" style="display: none; margin-bottom: 10px;">
+        <label data-i18n="label_short_reason">ระบุเหตุผลสั้น ๆ</label>
+        <input type="text" id="input-block-reason" style="width: 100%; padding: 6px; margin-top: 4px;">
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+        <button type="button" id="btn-delete-block" style="display: none; color: red; background: none; border: none; cursor: pointer;" data-i18n="btn_clear_block">ลบ</button>
+        <div style="display: flex; gap: 8px; margin-left: auto;">
+          <button type="button" id="close-block-modal" class="btn">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary" style="background: #111; color: #fff; border: none; padding: 6px 14px; border-radius: 4px;" data-i18n="btn_save_block">บันทึก</button>
+        </div>
+      </div>
+    </form>
+  </div>
 
-/* ==========================================================================
-   VIEW 2: SCHEDULE (TEAM/PERSON & OVERVIEW/DETAILED)
-   ========================================================================== */
-function renderScheduleView() {
-  const container = document.getElementById("schedule-viewport-container");
-  const caption = document.getElementById("sched-view-caption");
-  if (!container || !caption) return;
+  <!-- Modal: สร้างงาน (Task) -->
+  <div id="add-task-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 360px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 data-i18n="new_task_title" style="margin-top: 0;">สร้างงานใหม่</h3>
+    <form id="form-add-task">
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_task_title">ชื่องาน</label>
+        <input type="text" id="input-task-title" style="width: 100%; padding: 6px; margin-top: 4px;" required>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_assignee">ผู้รับผิดชอบ</label>
+        <select id="input-task-owner" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_deadline_date">วันที่ส่ง (Deadline)</label>
+        <select id="input-task-deadline-date" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+        <button type="button" id="btn-toggle-deadline-time" style="background: none; border: none; color: blue; cursor: pointer; font-size: 0.8rem; margin-top: 4px;" data-i18n="btn_add_time">+ เพิ่มเวลา</button>
+        <div id="deadline-time-container" style="display: none; margin-top: 6px;">
+          <input type="time" id="input-task-deadline-time" style="width: 100%; padding: 6px;">
+        </div>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label data-i18n="label_is_important">งานนี้สำคัญหรือไม่?</label>
+        <div id="group-is-important" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px;">
+          <button type="button" class="pill active" data-val="true" style="flex: 1; padding: 6px;" data-i18n="choice_yes">ใช่</button>
+          <button type="button" class="pill" data-val="false" style="flex: 1; padding: 6px;" data-i18n="choice_no">ไม่ใช่</button>
+        </div>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label data-i18n="label_is_urgent">งานนี้เร่งด่วนหรือไม่?</label>
+        <div id="group-is-urgent" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px;">
+          <button type="button" class="pill active" data-val="true" style="flex: 1; padding: 6px;" data-i18n="choice_yes">ใช่</button>
+          <button type="button" class="pill" data-val="false" style="flex: 1; padding: 6px;" data-i18n="choice_no">ไม่ใช่</button>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" id="close-add-task" class="btn">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary" style="background: #111; color: #fff; border: none; padding: 6px 14px; border-radius: 4px;" data-i18n="btn_save_task">บันทึกงาน</button>
+      </div>
+    </form>
+  </div>
 
-  const isDetailed = APP_DATA.scheduleMode === "detailed";
-  const rCtrl = document.getElementById("sched-range-control");
-  const dCtrl = document.getElementById("sched-day-control");
-  const pSel = document.getElementById("sched-person-select");
+  <!-- Modal: ค้นหาเวลาว่าง (Find a Time) -->
+  <div id="find-time-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 400px; max-height: 80vh; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 data-i18n="find_time_modal_title" style="margin-top: 0;">ค้นหาเวลาว่างพร้อมกัน</h3>
+    <p data-i18n="find_time_modal_desc" style="font-size: 0.85rem; color: #666;"></p>
+    <div style="margin-bottom: 12px;">
+      <label data-i18n="label_duration">ระยะเวลาที่ต้องการ</label>
+      <div id="duration-selector" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px;">
+        <button type="button" class="pill" data-minutes="60">1 ชม.</button>
+        <button type="button" class="pill active" data-minutes="120">2 ชม.</button>
+        <button type="button" class="pill" data-minutes="180">3 ชม.</button>
+      </div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <label data-i18n="label_people">ผู้เข้าร่วม</label>
+      <div id="people-scope-selector" class="pill-group" style="display: flex; gap: 6px; margin-top: 4px; margin-bottom: 8px;">
+        <button type="button" class="pill active" data-scope="everyone" id="pill-everyone-label" data-i18n="scope_everyone">ทุกคน</button>
+        <button type="button" class="pill" data-scope="select" data-i18n="scope_select_members">เลือกบางคน</button>
+      </div>
+      <div id="person-picker" style="display: none; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 120px; overflow-y: auto; background: #fafafa; padding: 8px; border-radius: 6px;"></div>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <label data-i18n="label_min_people">จำนวนคนที่ต้องว่างอย่างน้อย</label>
+      <select id="min-people-select" style="width: 100%; padding: 6px; margin-top: 4px;"></select>
+    </div>
+    <button id="btn-run-find" class="btn btn-primary" style="width: 100%; padding: 8px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer;" data-i18n="btn_find_matches">ค้นหาช่วงเวลา</button>
+    <div id="find-results" style="display: none; margin-top: 16px;">
+      <h4 data-i18n="results_heading" style="margin: 0 0 8px 0;">ผลการค้นหา</h4>
+      <div id="result-items" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </div>
+    <div style="text-align: right; margin-top: 16px;">
+      <button id="close-find-modal" class="btn">ปิด</button>
+    </div>
+  </div>
 
-  if (rCtrl) rCtrl.style.display = isDetailed ? "none" : "flex";
-  if (dCtrl) dCtrl.style.display = isDetailed ? "flex" : "none";
-  if (pSel) pSel.style.display = APP_DATA.scheduleScope === "person" ? "inline-block" : "none";
-
-  if (APP_DATA.scheduleScope === "team" && APP_DATA.scheduleMode === "overview") {
-    caption.innerText = `${t("scope_team")} / ${t("mode_overview")} — 1-2 ${t("btn_2weeks")}`;
-    renderScheduleTeamOverview(container);
-  } else if (APP_DATA.scheduleScope === "team" && APP_DATA.scheduleMode === "detailed") {
-    caption.innerText = `${t("scope_team")} / ${t("mode_detailed")} — 08:00–21:00 (${t("block_modal_desc")})`;
-    renderScheduleTeamDetailed(container);
-  } else if (APP_DATA.scheduleScope === "person" && APP_DATA.scheduleMode === "overview") {
-    const p = APP_DATA.members.find((m) => m.id === APP_DATA.scheduleSelectedPersonId);
-    caption.innerText = `${t("scope_person")} / ${t("mode_overview")} — ${p ? p.name : ''}`;
-    renderSchedulePersonOverview(container);
-  } else {
-    const p = APP_DATA.members.find((m) => m.id === APP_DATA.scheduleSelectedPersonId);
-    caption.innerText = `${t("scope_person")} / ${t("mode_detailed")} — ${p ? p.name : ''}`;
-    renderSchedulePersonDetailed(container);
-  }
-}
-
-function renderScheduleTeamOverview(container) {
-  const days = APP_DATA.scheduleRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
-  const periods = APP_DATA.periods;
-  const activeRoster = getActiveMembers();
-  const columns = [];
-
-  days.forEach((day) => {
-    periods.forEach((p) => {
-      const q = calculateExactQuorum(day.key, p.startMin, p.endMin);
-      const isHigh = q.total > 0 && q.available / q.total >= 0.8;
-      columns.push({ day, period: p, available: q.available, total: q.total, isHigh });
-    });
-  });
-
-  let tableHtml = `
-    <div class="matrix-grid-scroll-wrapper">
-      <table class="compact-sched-table">
-        <thead>
-          <tr>
-            <th class="sticky-col sticky-col-header" rowspan="2">${t("th_member_name")}</th>
-            ${days.map((d) => `<th class="th-date-group" colspan="3">${d.short}</th>`).join("")}
-          </tr>
-          <tr>
-            ${columns.map((c) => `<th class="th-seg ${c.isHigh ? 'col-subtle-tint' : ''}">${c.period.label[0]}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="tr-quorum">
-            <td class="sticky-col" style="font-weight:700; background:#F8F8F7;">${t("status_free")}</td>
-            ${columns.map((c) => `
-              <td class="td-quorum-cell ${c.isHigh ? 'col-highlight-high' : ''}" onclick="openRangeInspector('${c.day.key}', ${c.period.startMin}, ${c.period.endMin}, '${c.day.dateStr} · ${c.period.label}')">
-                ${c.available}/${c.total}
-              </td>
-            `).join("")}
-          </tr>
-          ${activeRoster.map((m) => `
-            <tr>
-              <td class="sticky-col">${m.name}</td>
-              ${columns.map((c) => {
-                const st = getMemberStatusInRange(m.id, c.day.key, c.period.startMin, c.period.endMin);
-                let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
-                return `
-                  <td class="sched-grid-cell ${c.isHigh ? 'col-subtle-tint' : ''}">
-                    <div class="compact-tile block-${st.type}" onclick="openRangeInspector('${c.day.key}', ${c.period.startMin}, ${c.period.endMin}, '${c.day.dateStr} · ${c.period.label}')">
-                      ${label}
-                    </div>
-                  </td>
-                `;
-              }).join("")}
-            </tr>
-          `).join("")}
-        </tbody>
+  <!-- Modal: ตั้งค่าทีม (Team Settings) -->
+  <div id="team-settings-modal" class="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 440px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <h3 data-i18n="team_settings_title" style="margin-top: 0;">ตั้งค่าทีมและสมาชิก</h3>
+    <form id="form-add-member" style="display: flex; gap: 8px; margin-bottom: 16px;">
+      <input type="text" id="input-new-member-name" placeholder="ชื่อสมาชิกใหม่..." style="flex: 1; padding: 6px 10px;" required>
+      <button type="submit" class="btn" style="background: #111; color: #fff; border: none; padding: 6px 12px; border-radius: 4px;" data-i18n="btn_add_member">+ เพิ่ม</button>
+    </form>
+    <div style="max-height: 240px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; margin-bottom: 16px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tbody id="team-settings-member-list"></tbody>
       </table>
     </div>
-  `;
-  container.innerHTML = tableHtml;
-}
-
-function renderScheduleTeamDetailed(container) {
-  const dayKey = APP_DATA.scheduleDetailedDay;
-  const dayObj = APP_DATA.days.find((d) => d.key === dayKey) || APP_DATA.days[0];
-  const axisStartMin = 480;
-  const axisEndMin = 1260;
-  const totalMinutes = axisEndMin - axisStartMin;
-  const activeRoster = getActiveMembers();
-
-  const stripSegments = [];
-  for (let min = axisStartMin; min < axisEndMin; min += 60) {
-    const q = calculateExactQuorum(dayKey, min, min + 60);
-    stripSegments.push({
-      startMin: min,
-      endMin: min + 60,
-      label: `${formatMinutesToTime(min)}`,
-      available: q.available,
-      total: q.total
-    });
-  }
-
-  const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
-  const ticksHtml = hours.map((h) => `
-    <div class="timeline-hour-tick">
-      ${String(h).padStart(2, '0')}:00
-      <span class="timeline-half-tick"></span>
+    <div style="text-align: right;">
+      <button id="close-team-settings" class="btn">ปิด</button>
     </div>
-  `).join("");
+  </div>
 
-  const gridBackgroundHtml = hours.map(() => `
-    <div class="grid-line-hour"><span class="grid-line-half"></span></div>
-  `).join("");
-
-  const memberRowsHtml = activeRoster.map((m) => {
-    const memberBlocks = APP_DATA.blocks.filter((b) => b.memberId === m.id && b.dateKey === dayKey);
-
-    const blocksHtml = memberBlocks.map((b) => {
-      const bStart = Math.max(axisStartMin, parseTimeToMinutes(b.start));
-      const bEnd = Math.min(axisEndMin, parseTimeToMinutes(b.end));
-      if (bEnd <= bStart) return "";
-
-      const leftPercent = (bStart - axisStartMin) / totalMinutes * 100;
-      const widthPercent = (bEnd - bStart) / totalMinutes * 100;
-
-      let label = `${b.start}–${b.end}`;
-      if (b.type === "work") {
-        const task = APP_DATA.tasks.find((t) => t.id === b.taskId);
-        label = `${t("status_work")}: ${task ? task.title : 'Task'} (${b.start}–${b.end})`;
-      } else if (b.type === "busy") {
-        label = `${t("status_busy")}: ${b.reason || 'Committed'} (${b.start}–${b.end})`;
-      } else {
-        label = `${t("status_free")} (${b.start}–${b.end})`;
-      }
-
-      return `
-        <div class="timeline-block block-${b.type}" 
-             style="left:${leftPercent}%; width:${widthPercent}%;"
-             title="${m.name}: ${label}"
-             onclick="openBlockDetailInspector('${b.id}')">
-          ${label}
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <div class="timeline-row">
-        <div class="timeline-member-label">${m.name}</div>
-        <div class="timeline-track" onclick="handleTimelineTrackClick(event, ${m.id}, '${dayKey}')">
-          <div class="timeline-grid-lines">${gridBackgroundHtml}</div>
-          ${blocksHtml}
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  container.innerHTML = `
-    <div class="detailed-timeline-card">
-      <div class="shared-availability-strip">
-        <div style="font-size:0.85rem; font-weight:700; margin-right:16px; white-space:nowrap;">
-          ${t("mutual_availability")} (${dayObj.short}):
-        </div>
-        <div class="quorum-gradient-track">
-          ${stripSegments.map((seg) => {
-            const ratio = seg.total > 0 ? seg.available / seg.total : 0;
-            const bg = ratio >= 0.8 ? '#A7D7B5' : ratio >= 0.5 ? '#CFE3D5' : '#ECECE8';
-            const color = ratio >= 0.8 ? '#1E5833' : '#4E4E4A';
-            return `
-              <div class="quorum-hour-segment" 
-                   style="background:${bg}; color:${color};"
-                   title="${seg.label}: ${seg.available}/${seg.total} ${t('status_free')}"
-                   onclick="openRangeInspector('${dayKey}', ${seg.startMin}, ${seg.endMin}, '${dayObj.short} · ${seg.label}–${formatMinutesToTime(seg.endMin)}')">
-                ${seg.available}
-              </div>
-            `;
-          }).join("")}
-        </div>
-      </div>
-
-      <div class="timeline-outer">
-        <div class="timeline-axis-header">${ticksHtml}</div>
-        <div class="timeline-rows-container">${memberRowsHtml}</div>
-      </div>
+  <!-- Side Drawer -->
+  <aside id="side-drawer" class="drawer" style="position: fixed; top: 0; right: -400px; width: 360px; height: 100vh; background: #fff; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 1000; padding: 24px; box-sizing: border-box; transition: right 0.3s ease; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span id="drawer-meta" style="font-size: 0.75rem; color: #888; letter-spacing: 1px;"></span>
+      <button id="close-drawer" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">✕</button>
     </div>
-  `;
-}
-
-function renderSchedulePersonOverview(container) {
-  const member = APP_DATA.members.find((m) => m.id === APP_DATA.scheduleSelectedPersonId) || getActiveMembers()[0];
-  const days = APP_DATA.scheduleRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
-
-  container.innerHTML = `
-    <div class="col-card">
-      <div class="section-header-inline">
-        <h3 class="section-title">${member.name}</h3>
-        <button class="btn btn-primary" onclick="openBlockInputModal(${member.id}, '${days[0].key}', '09:00', '11:00')">${t("btn_add_block")}</button>
-      </div>
-      <div class="my-sched-grid">
-        ${days.map((d) => `
-          <div class="my-day-row">
-            <div class="my-day-label">${d.short}</div>
-            <div class="my-segments-wrap">
-              ${APP_DATA.periods.map((p) => {
-                const st = getMemberStatusInRange(member.id, d.key, p.startMin, p.endMin);
-                let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
-                return `
-                  <button class="my-segment-btn block-${st.type}" onclick="openBlockInputModal(${member.id}, '${d.key}', '${formatMinutesToTime(p.startMin)}', '${formatMinutesToTime(p.endMin)}')">
-                    ${p.label}: ${label}
-                  </button>
-                `;
-              }).join("")}
-            </div>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `;
-}
-
-function renderSchedulePersonDetailed(container) {
-  const member = APP_DATA.members.find((m) => m.id === APP_DATA.scheduleSelectedPersonId) || getActiveMembers()[0];
-  const weekDays = APP_DATA.days.filter((d) => d.in1w);
-
-  container.innerHTML = `
-    <div class="col-card">
-      <div class="section-header-inline">
-        <h3 class="section-title">${member.name}</h3>
-        <button class="btn btn-primary" onclick="openBlockInputModal(${member.id}, '${weekDays[0].key}', '09:00', '11:00')">${t("btn_add_block")}</button>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        ${weekDays.map((d) => {
-          const dayBlocks = APP_DATA.blocks.filter((b) => b.memberId === member.id && b.dateKey === d.key);
-          return `
-            <div style="padding:12px; background:#FAF9F7; border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-              <div style="font-weight:700; font-size:0.9rem; margin-bottom:8px;">${d.dateStr}</div>
-              ${dayBlocks.length === 0 ? `<div style="font-size:0.8rem; color:var(--text-muted);">${t("status_free")}</div>` : `
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  ${dayBlocks.map((b) => `
-                    <div class="timeline-block block-${b.type}" style="position:static; padding:6px 12px; height:auto;" onclick="openBlockDetailInspector('${b.id}')">
-                      <strong>${b.start}–${b.end}</strong>: ${t("status_" + b.type)} ${b.reason ? `(${b.reason})` : ''}
-                    </div>
-                  `).join("")}
-                </div>
-              `}
-            </div>
-          `;
-        }).join("")}
-      </div>
-    </div>
-  `;
-}
-
-window.handleTimelineTrackClick = function (event, memberId, dateKey) {
-  if (event.target.classList.contains("timeline-block")) return;
-  const rect = event.currentTarget.getBoundingClientRect();
-  const clickX = event.clientX - rect.left;
-  const clickRatio = Math.max(0, Math.min(1, clickX / rect.width));
-  const clickedMinutes = Math.floor(480 + clickRatio * 780);
-
-  const roundedStart = Math.floor(clickedMinutes / 30) * 30;
-  const roundedEnd = roundedStart + 60;
-
-  openBlockInputModal(memberId, dateKey, formatMinutesToTime(roundedStart), formatMinutesToTime(roundedEnd));
-};
-
-/* ==========================================================================
-   VIEW 3: PRIORITY MATRIX
-   ========================================================================== */
-function renderEisenhowerMatrix() {
-  const isTeam = APP_DATA.matrixFilterMode === "team";
-  const tasks = (isTeam ?
-    APP_DATA.tasks :
-    APP_DATA.tasks.filter((t) => t.ownerId === APP_DATA.matrixSelectedMemberId)
-  ).sort(sortTasksByDeadline);
-
-  const buckets = { q1: [], q2: [], q3: [], q4: [] };
-  tasks.forEach((t) => { if (buckets[t.quadrant]) buckets[t.quadrant].push(t); });
-
-  const setVal = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.innerText = val;
-  };
-
-  setVal("mat-sum-q1", buckets.q1.length);
-  setVal("mat-sum-q2", buckets.q2.length);
-  setVal("mat-sum-q3", buckets.q3.length);
-  setVal("mat-sum-q4", buckets.q4.length);
-
-  setVal("count-badge-q1", buckets.q1.length);
-  setVal("count-badge-q2", buckets.q2.length);
-  setVal("count-badge-q3", buckets.q3.length);
-  setVal("count-badge-q4", buckets.q4.length);
-
-  const urgentCount = tasks.filter((t) => t.urgent).length;
-  const importantNoBlock = tasks.filter((t) => (t.quadrant === "q1" || t.quadrant === "q2") && !APP_DATA.blocks.some((b) => b.taskId === t.id)).length;
-  const insightsEl = document.getElementById("mat-factual-insights");
-  if (insightsEl) {
-    insightsEl.innerHTML = `
-      <div class="insight-row"><span class="insight-bullet bullet-warn"></span><span>${t("insight_urgent", urgentCount)}</span></div>
-      ${importantNoBlock > 0 ? `<div class="insight-row"><span class="insight-bullet bullet-info"></span><span>${t("insight_unassigned", importantNoBlock)}</span></div>` : ''}
-    `;
-  }
-
-  ["q1", "q2", "q3", "q4"].forEach((qCode) => {
-    const listEl = document.getElementById(`eq-list-${qCode}`);
-    if (!listEl) return;
-    const items = buckets[qCode];
-    if (items.length === 0) {
-      listEl.innerHTML = `<div class="eq-empty-state">${t("empty_no_tasks")}</div>`;
-      return;
-    }
-    listEl.innerHTML = items.map((task) => {
-      const owner = APP_DATA.members.find((m) => m.id === task.ownerId);
-      return `
-        <div class="eq-task-card" onclick="openTaskInspector('${task.id}')">
-          <div class="eq-card-title">${task.title}</div>
-          <div class="eq-card-meta">
-            <span class="eq-owner">${owner ? owner.name : 'Unassigned'}</span>
-            <span>·</span>
-            <span>Due ${formatTaskDeadline(task)}</span>
-          </div>
-        </div>
-      `;
-    }).join("");
-  });
-}
-
-/* ==========================================================================
-   VIEW 4: ME PAGE
-   ========================================================================== */
-function renderMePage() {
-  const currentMember = APP_DATA.members.find((m) => m.id === APP_DATA.currentUserId) || getActiveMembers()[0];
-  if (!currentMember) return;
-  const nameEl = document.getElementById("me-heading-name");
-  if (nameEl) nameEl.innerText = `${currentMember.name}`;
-
-  const weekDays = APP_DATA.days.filter((d) => d.in1w);
-  const schedContainer = document.getElementById("me-schedule-display");
-
-  if (schedContainer) {
-    schedContainer.innerHTML = weekDays.map((day) => {
-      const dayBlocks = APP_DATA.blocks.filter((b) => b.memberId === currentMember.id && b.dateKey === day.key);
-      return `
-        <div class="my-day-row">
-          <div class="my-day-label">${day.short}</div>
-          <div class="my-segments-wrap">
-            ${dayBlocks.length === 0 ? `
-              <button class="btn-chip" onclick="openBlockInputModal(${currentMember.id}, '${day.key}', '09:00', '12:00')">${t("btn_add_block")}</button>
-            ` : dayBlocks.map((b) => `
-              <button class="my-segment-btn block-${b.type}" onclick="openBlockDetailInspector('${b.id}')">
-                ${b.start}–${b.end}: ${t("status_" + b.type)}
-              </button>
-            `).join("")}
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  const myTasks = APP_DATA.tasks.filter((t) => t.ownerId === currentMember.id).sort(sortTasksByDeadline);
-  const badgeEl = document.getElementById("me-task-count-badge");
-  const taskListEl = document.getElementById("me-tasks-list");
-
-  if (badgeEl) badgeEl.innerText = `${myTasks.length} tasks`;
-  if (taskListEl) {
-    taskListEl.innerHTML = myTasks.length === 0 ? `<div style="font-size:0.85rem; color:var(--text-muted); padding:8px 0;">${t("empty_no_assigned")}</div>` : myTasks.map((task) => {
-      const q = APP_DATA.quadrants[task.quadrant];
-      return `
-        <div class="deadline-item" onclick="openTaskInspector('${task.id}')">
-          <div>
-            <div class="task-title">${task.title}</div>
-            <div class="task-meta">${t("th_status")}: ${task.status || 'In Progress'}</div>
-          </div>
-          <div class="deadline-right">
-            <span class="deadline-due ${task.urgent ? 'due-urgent' : ''}">${formatTaskDeadline(task)}</span>
-            <span class="priority-pill ${q.css}">${t(q.labelKey)}</span>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
-  myTasks.forEach((t) => { counts[t.quadrant] = (counts[t.quadrant] || 0) + 1; });
-  const meq1 = document.getElementById("me-count-q1");
-  const meq2 = document.getElementById("me-count-q2");
-  const meq3 = document.getElementById("me-count-q3");
-  const meq4 = document.getElementById("me-count-q4");
-
-  if (meq1) meq1.innerText = counts.q1;
-  if (meq2) meq2.innerText = counts.q2;
-  if (meq3) meq3.innerText = counts.q3;
-  if (meq4) meq4.innerText = counts.q4;
-}
-
-/* ==========================================================================
-   SCHEDULE BLOCK INPUT & EDIT
-   ========================================================================== */
-function openBlockInputModal(memberId, dateKey, start = "09:00", end = "11:00", existingBlockId = null) {
-  const member = APP_DATA.members.find((m) => m.id === memberId);
-  const existing = existingBlockId ? APP_DATA.blocks.find((b) => b.id === existingBlockId) : null;
-
-  document.getElementById("input-block-id").value = existingBlockId || "";
-  document.getElementById("input-block-member-id").value = memberId;
-  document.getElementById("block-modal-heading").innerText = `${member ? member.name : ''}`;
-
-  const dateSelect = document.getElementById("input-block-date");
-  dateSelect.innerHTML = APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
-  dateSelect.value = existing ? existing.dateKey : dateKey;
-
-  document.getElementById("input-block-start").value = existing ? existing.start : start;
-  document.getElementById("input-block-end").value = existing ? existing.end : end;
-
-  const taskSelect = document.getElementById("input-block-task-id");
-  taskSelect.innerHTML = APP_DATA.tasks.map((t) => `<option value="${t.id}">${t.title} (${t.quadrant.toUpperCase()})</option>`).join("");
-  if (existing && existing.taskId) taskSelect.value = existing.taskId;
-
-  const currentType = existing ? existing.type : "available";
-  setBlockTypeActive(currentType);
-
-  document.getElementById("input-block-reason").value = existing && existing.reason || "";
-  document.getElementById("btn-delete-block").style.display = existing ? "inline-block" : "none";
-
-  openModal(document.getElementById("block-input-modal"));
-}
-
-function setBlockTypeActive(type) {
-  document.querySelectorAll("#block-type-selector .btn-type-pill").forEach((p) => {
-    p.classList.toggle("active", p.getAttribute("data-type") === type);
-  });
-  document.getElementById("block-work-section").style.display = type === "work" ? "block" : "none";
-  document.getElementById("block-busy-section").style.display = type === "busy" ? "block" : "none";
-}
-
-window.adjustBlockDuration = function (minutesToAdd) {
-  const startVal = document.getElementById("input-block-start").value;
-  const startMin = parseTimeToMinutes(startVal);
-  const newEndMin = Math.min(1439, startMin + minutesToAdd);
-  document.getElementById("input-block-end").value = formatMinutesToTime(newEndMin);
-};
-
-/* ==========================================================================
-   TEAM SETTINGS (ADD, RENAME, TOGGLE ACTIVE/INACTIVE)
-   ========================================================================== */
-function renderTeamSettingsList() {
-  const tbody = document.getElementById("team-settings-member-list");
-  if (!tbody) return;
-  tbody.innerHTML = APP_DATA.members.map((m) => `
-    <tr style="border-bottom:1px solid var(--border-subtle);">
-      <td style="padding:10px 12px; font-weight:600;">
-        ${m.name} ${!m.active ? '<span style="font-size:0.75rem; color:var(--text-muted);">(' + t("status_inactive") + ')</span>' : ''}
-      </td>
-      <td style="padding:10px 12px;">
-        <span class="status-tag ${m.active ? 'tag-available' : 'tag-nodata'}">
-          ${m.active ? t("status_active") : t("status_inactive")}
-        </span>
-      </td>
-      <td style="padding:10px 12px; text-align:right;">
-        <button class="btn-text" onclick="renameMember(${m.id})" style="margin-right:8px;">${t("btn_edit_name")}</button>
-        <button class="btn-text" onclick="toggleMemberActive(${m.id})">${t("btn_toggle_active")}</button>
-      </td>
-    </tr>
-  `).join("");
-}
-
-window.renameMember = function (memberId) {
-  const member = APP_DATA.members.find((m) => m.id === memberId);
-  if (!member) return;
-  const newName = prompt(t("th_member_name"), member.name);
-  if (newName && newName.trim()) {
-    member.name = newName.trim();
-    renderTeamSettingsList();
-    initPersonPickers();
-    refreshAllActiveViews();
-  }
-};
-
-window.toggleMemberActive = function (memberId) {
-  const member = APP_DATA.members.find((m) => m.id === memberId);
-  if (!member) return;
-  member.active = !member.active;
-  renderTeamSettingsList();
-  initPersonPickers();
-  refreshAllActiveViews();
-};
-
-/* ==========================================================================
-   DRAWER INSPECTOR
-   ========================================================================== */
-function openRangeInspector(dateKey, startMin, endMin, title) {
-  const q = calculateExactQuorum(dateKey, startMin, endMin);
-  const drawer = document.getElementById("side-drawer");
-
-  document.getElementById("drawer-meta").innerText = t("drawer_meta");
-  document.getElementById("drawer-title").innerText = title;
-
-  document.getElementById("drawer-body").innerHTML = `
-    <div style="margin-bottom: 20px;">
-      <div style="font-size: 1.35rem; font-weight: 700; color:var(--status-avail-text);">
-        ${q.available} / ${q.total} ${t("status_available")}
-      </div>
-      <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
-        ${q.conflicts.length} conflict(s)
-      </div>
-    </div>
-
-    <h4 class="drawer-section-title">${t("status_busy")} (${q.conflicts.length})</h4>
-    ${q.conflicts.length === 0 ? `<div style="font-size:0.82rem; color:var(--text-muted);">${t("choice_no")} conflicts.</div>` : q.conflicts.map((c) => {
-      let badge = "";
-      let taskDetail = "";
-      if (c.task) {
-        const qInfo = APP_DATA.quadrants[c.task.quadrant];
-        badge = `<span class="priority-pill ${qInfo.css}" style="font-size:0.65rem;">${t(qInfo.labelKey)}</span>`;
-        taskDetail = `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Deadline: ${formatTaskDeadline(c.task)}</div>`;
-      } else if (c.type === "nodata") {
-        badge = `<span class="status-tag tag-nodata">${t("status_nodata")}</span>`;
-      }
-      return `
-        <div class="drawer-person-row unavailable">
-          <div>
-            <strong>${c.name}</strong>
-            <div style="font-size:0.78rem; color:#8A3834; margin-top:2px;">${c.reason}</div>
-            ${taskDetail}
-          </div>
-          <div>${badge}</div>
-        </div>
-      `;
-    }).join("")}
-
-    <h4 class="drawer-section-title">${t("status_available")} (${q.availableMembers.length})</h4>
-    ${q.availableMembers.map((m) => `
-      <div class="drawer-person-row">
-        <div><strong>${m.name}</strong></div>
-        <span class="status-tag tag-available">${t("status_available")}</span>
-      </div>
-    `).join("")}
-  `;
-
-  document.getElementById("overlay").classList.add("active");
-  drawer.classList.add("active");
-}
-
-function openBlockDetailInspector(blockId) {
-  const block = APP_DATA.blocks.find((b) => b.id === blockId);
-  if (!block) return;
-
-  const member = APP_DATA.members.find((m) => m.id === block.memberId);
-  const day = APP_DATA.days.find((d) => d.key === block.dateKey);
-  const drawer = document.getElementById("side-drawer");
-  const notes = APP_DATA.blockNotes[block.id] || [];
-
-  document.getElementById("drawer-meta").innerText = t("drawer_meta");
-  document.getElementById("drawer-title").innerText = `${member ? member.name : ''} · ${day ? day.short : block.dateKey}`;
-
-  let content = "";
-  if (block.type === "work") {
-    const task = APP_DATA.tasks.find((t) => t.id === block.taskId);
-    const qInfo = task ? APP_DATA.quadrants[task.quadrant] : null;
-    content = `
-      <div class="drawer-task-box">
-        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">${t("status_work")}</div>
-        <div style="font-weight:700; font-size:1.05rem; margin:2px 0 6px;">${task ? task.title : 'Unlinked Task'}</div>
-        ${qInfo ? `<span class="priority-pill ${qInfo.css}">${t(qInfo.labelKey)}</span>` : ''}
-        <div style="font-size:0.82rem; color:var(--text-secondary); margin-top:8px;">
-          Deadline: <strong>${task ? formatTaskDeadline(task) : 'None'}</strong>
-        </div>
-      </div>
-    `;
-  } else if (block.type === "busy") {
-    content = `
-      <div class="drawer-task-box" style="border-left:3px solid #E57373;">
-        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">${t("status_busy")}</div>
-        <div style="font-weight:600; font-size:0.95rem; margin-top:4px;">${block.reason || t("status_busy")}</div>
-      </div>
-    `;
-  } else {
-    content = `
-      <div class="drawer-task-box" style="background:var(--status-avail-bg);">
-        <div style="font-weight:600; font-size:0.9rem; color:var(--status-avail-text);">${t("status_available")}</div>
-      </div>
-    `;
-  }
-
-  document.getElementById("drawer-body").innerHTML = `
-    <div style="margin-bottom:14px;">
-      <div style="font-size:0.88rem; color:var(--text-secondary);">${day ? day.dateStr : block.dateKey} · <strong>${block.start}–${block.end}</strong></div>
-      <div style="margin-top:6px; display:flex; gap:8px;">
-        <span class="status-tag tag-${block.type}">${t("status_" + block.type)}</span>
-        <button class="btn-text" onclick="closeAllOverlays(); openBlockInputModal(${block.memberId}, '${block.dateKey}', '${block.start}', '${block.end}', '${block.id}')">${t("btn_edit_name")} &rarr;</button>
-      </div>
-    </div>
-    ${content}
-
-    <h4 class="drawer-section-title">Notes / Observations</h4>
-    <div id="drawer-notes-list">
-      ${notes.length === 0 ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">${t("empty_no_tasks")}</div>` : notes.map((n) => `<div class="note-item">${n}</div>`).join("")}
-    </div>
-    <div class="note-input-row">
-      <input type="text" class="form-input" id="input-drawer-note" placeholder="Note..." style="font-size:0.82rem; padding:6px 10px;" />
-      <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.8rem;" onclick="submitBlockNote('${block.id}')">Add</button>
-    </div>
-  `;
-
-  document.getElementById("overlay").classList.add("active");
-  drawer.classList.add("active");
-}
-
-window.submitBlockNote = function (blockId) {
-  const input = document.getElementById("input-drawer-note");
-  const val = input.value.trim();
-  if (!val) return;
-  if (!APP_DATA.blockNotes[blockId]) APP_DATA.blockNotes[blockId] = [];
-  const currentMember = APP_DATA.members.find((m) => m.id === APP_DATA.currentUserId);
-  APP_DATA.blockNotes[blockId].push(`${currentMember ? currentMember.name : 'User'}: ${val}`);
-  input.value = "";
-  openBlockDetailInspector(blockId);
-};
-
-function openTaskInspector(taskId) {
-  const task = APP_DATA.tasks.find((t) => t.id === taskId);
-  if (!task) return;
-
-  const owner = APP_DATA.members.find((m) => m.id === task.ownerId);
-  const qInfo = APP_DATA.quadrants[task.quadrant];
-  const linkedBlocks = APP_DATA.blocks.filter((b) => b.taskId === task.id);
-  const drawer = document.getElementById("side-drawer");
-
-  document.getElementById("drawer-meta").innerText = t("drawer_meta");
-  document.getElementById("drawer-title").innerText = task.title;
-
-  document.getElementById("drawer-body").innerHTML = `
-    <div class="drawer-task-box" style="margin-bottom:16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <span class="priority-pill ${qInfo.css}">${t(qInfo.labelKey)}</span>
-        <span style="font-weight:600; font-size:0.85rem; color:${task.urgent ? '#C03530' : 'inherit'}">Due: ${formatTaskDeadline(task)}</span>
-      </div>
-
-      <div class="drawer-row-item">
-        <span class="label">${t("label_assignee")}</span>
-        <span class="value">${owner ? owner.name : "Unassigned"}</span>
-      </div>
-
-      <div class="drawer-row-item">
-        <span class="label">${t("th_status")}</span>
-        <span class="value">${task.status || "In Progress"}</span>
-      </div>
-
-      <div class="drawer-row-item">
-        <span class="label">Scheduled Work Time</span>
-        <span class="value" style="color:${linkedBlocks.length > 0 ? 'var(--text-primary)' : 'var(--text-muted)'};">
-          ${linkedBlocks.length > 0 ? linkedBlocks.map((b) => `${b.dateKey} (${b.start}–${b.end})`).join(", ") : t("choice_no")}
-        </span>
-      </div>
-
-      <div class="drawer-row-item" style="margin-bottom:0;">
-        <span class="label">Note</span>
-        <span class="value" style="font-size:0.85rem; font-weight:400; color:var(--text-secondary); margin-top:2px;">
-          ${task.note || "-"}
-        </span>
-      </div>
-    </div>
-
-    <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:14px;">
-      <span style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px;">
-        Change Quadrant
-      </span>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-        <button class="btn btn-secondary ${task.quadrant === 'q1' ? 'btn-primary' : ''}" style="font-size:0.75rem; padding:6px 8px;" onclick="moveTaskQuadrant('${task.id}', 'q1')">Q1</button>
-        <button class="btn btn-secondary ${task.quadrant === 'q2' ? 'btn-primary' : ''}" style="font-size:0.75rem; padding:6px 8px;" onclick="moveTaskQuadrant('${task.id}', 'q2')">Q2</button>
-        <button class="btn btn-secondary ${task.quadrant === 'q3' ? 'btn-primary' : ''}" style="font-size:0.75rem; padding:6px 8px;" onclick="moveTaskQuadrant('${task.id}', 'q3')">Q3</button>
-        <button class="btn btn-secondary ${task.quadrant === 'q4' ? 'btn-primary' : ''}" style="font-size:0.75rem; padding:6px 8px;" onclick="moveTaskQuadrant('${task.id}', 'q4')">Q4</button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById("overlay").classList.add("active");
-  drawer.classList.add("active");
-}
-
-window.moveTaskQuadrant = function (taskId, newQuadrant) {
-  const task = APP_DATA.tasks.find((t) => t.id === taskId);
-  if (!task) return;
-  task.quadrant = newQuadrant;
-  task.urgent = newQuadrant === "q1" || newQuadrant === "q3";
-  refreshAllActiveViews();
-  openTaskInspector(taskId);
-};
-
-/* ==========================================================================
-   GLOBAL CONTROLS & EVENT BINDINGS
-   ========================================================================== */
-function setupGlobalControls() {
-  const overlay = document.getElementById("overlay");
-  const blockModal = document.getElementById("block-input-modal");
-  const taskModal = document.getElementById("add-task-modal");
-  const findModal = document.getElementById("find-time-modal");
-  const teamSettingsModal = document.getElementById("team-settings-modal");
-
-  const btnOpenTeam = document.getElementById("btn-open-team-settings");
-  if (btnOpenTeam) {
-    btnOpenTeam.addEventListener("click", () => {
-      renderTeamSettingsList();
-      openModal(teamSettingsModal);
-    });
-  }
-
-  const btnCloseTeam = document.getElementById("close-team-settings");
-  if (btnCloseTeam) btnCloseTeam.addEventListener("click", closeAllOverlays);
-
-  const formAddMember = document.getElementById("form-add-member");
-  if (formAddMember) {
-    formAddMember.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const input = document.getElementById("input-new-member-name");
-      const name = input.value.trim();
-      if (!name) return;
-
-      const newId = APP_DATA.members.length > 0 ? Math.max(...APP_DATA.members.map((m) => m.id)) + 1 : 1;
-      APP_DATA.members.push({ id: newId, name, active: true });
-      input.value = "";
-      renderTeamSettingsList();
-      initPersonPickers();
-      refreshAllActiveViews();
-    });
-  }
-
-  const btnOv1w = document.getElementById("btn-ov-1w");
-  const btnOv2w = document.getElementById("btn-ov-2w");
-  if (btnOv1w && btnOv2w) {
-    btnOv1w.addEventListener("click", () => {
-      btnOv1w.classList.add("active");
-      btnOv2w.classList.remove("active");
-      APP_DATA.overviewRange = "1w";
-      refreshAllActiveViews();
-    });
-    btnOv2w.addEventListener("click", () => {
-      btnOv2w.classList.add("active");
-      btnOv1w.classList.remove("active");
-      APP_DATA.overviewRange = "2w";
-      refreshAllActiveViews();
-    });
-  }
-
-  const btnSchedScopeTeam = document.getElementById("btn-sched-scope-team");
-  const btnSchedScopePerson = document.getElementById("btn-sched-scope-person");
-  if (btnSchedScopeTeam && btnSchedScopePerson) {
-    btnSchedScopeTeam.addEventListener("click", () => {
-      btnSchedScopeTeam.classList.add("active");
-      btnSchedScopePerson.classList.remove("active");
-      APP_DATA.scheduleScope = "team";
-      renderScheduleView();
-    });
-    btnSchedScopePerson.addEventListener("click", () => {
-      btnSchedScopePerson.classList.add("active");
-      btnSchedScopeTeam.classList.remove("active");
-      APP_DATA.scheduleScope = "person";
-      renderScheduleView();
-    });
-  }
-
-  const btnSchedModeOv = document.getElementById("btn-sched-mode-overview");
-  const btnSchedModeDet = document.getElementById("btn-sched-mode-detailed");
-  if (btnSchedModeOv && btnSchedModeDet) {
-    btnSchedModeOv.addEventListener("click", () => {
-      btnSchedModeOv.classList.add("active");
-      btnSchedModeDet.classList.remove("active");
-      APP_DATA.scheduleMode = "overview";
-      renderScheduleView();
-    });
-    btnSchedModeDet.addEventListener("click", () => {
-      btnSchedModeDet.classList.add("active");
-      btnSchedModeOv.classList.remove("active");
-      APP_DATA.scheduleMode = "detailed";
-      renderScheduleView();
-    });
-  }
-
-  const btnSched1w = document.getElementById("btn-sched-1w");
-  const btnSched2w = document.getElementById("btn-sched-2w");
-  if (btnSched1w && btnSched2w) {
-    btnSched1w.addEventListener("click", () => {
-      btnSched1w.classList.add("active");
-      btnSched2w.classList.remove("active");
-      APP_DATA.scheduleRange = "1w";
-      renderScheduleView();
-    });
-    btnSched2w.addEventListener("click", () => {
-      btnSched2w.classList.add("active");
-      btnSched1w.classList.remove("active");
-      APP_DATA.scheduleRange = "2w";
-      renderScheduleView();
-    });
-  }
-
-  const btnPrevDay = document.getElementById("btn-sched-prev-day");
-  const btnNextDay = document.getElementById("btn-sched-next-day");
-  const selDay = document.getElementById("sched-single-day-select");
-
-  if (btnPrevDay && selDay) {
-    btnPrevDay.addEventListener("click", () => {
-      const idx = APP_DATA.days.findIndex((d) => d.key === APP_DATA.scheduleDetailedDay);
-      if (idx > 0) {
-        APP_DATA.scheduleDetailedDay = APP_DATA.days[idx - 1].key;
-        selDay.value = APP_DATA.scheduleDetailedDay;
-        renderScheduleView();
-      }
-    });
-  }
-
-  if (btnNextDay && selDay) {
-    btnNextDay.addEventListener("click", () => {
-      const idx = APP_DATA.days.findIndex((d) => d.key === APP_DATA.scheduleDetailedDay);
-      if (idx < APP_DATA.days.length - 1) {
-        APP_DATA.scheduleDetailedDay = APP_DATA.days[idx + 1].key;
-        selDay.value = APP_DATA.scheduleDetailedDay;
-        renderScheduleView();
-      }
-    });
-  }
-
-  if (selDay) {
-    selDay.addEventListener("change", (e) => {
-      APP_DATA.scheduleDetailedDay = e.target.value;
-      renderScheduleView();
-    });
-  }
-
-  const matBtnTeam = document.getElementById("mat-btn-team");
-  const matBtnIndiv = document.getElementById("mat-btn-indiv");
-  const matPersonSelect = document.getElementById("mat-person-select");
-  if (matBtnTeam && matBtnIndiv && matPersonSelect) {
-    matBtnTeam.addEventListener("click", () => {
-      matBtnTeam.classList.add("active");
-      matBtnIndiv.classList.remove("active");
-      matPersonSelect.style.display = "none";
-      APP_DATA.matrixFilterMode = "team";
-      renderEisenhowerMatrix();
-    });
-    matBtnIndiv.addEventListener("click", () => {
-      matBtnIndiv.classList.add("active");
-      matBtnTeam.classList.remove("active");
-      matPersonSelect.style.display = "inline-block";
-      APP_DATA.matrixFilterMode = "individual";
-      renderEisenhowerMatrix();
-    });
-  }
-
-  const quickBlock = document.getElementById("me-quick-add-block");
-  const quickTask = document.getElementById("me-quick-add-task");
-  const copyWeek = document.getElementById("btn-copy-prev-week");
-
-  if (quickBlock) {
-    quickBlock.addEventListener("click", () => {
-      openBlockInputModal(APP_DATA.currentUserId, "2026-09-18", "09:00", "11:00");
-    });
-  }
-
-  if (quickTask && taskModal) {
-    quickTask.addEventListener("click", () => {
-      document.getElementById("input-task-owner").value = APP_DATA.currentUserId;
-      openModal(taskModal);
-    });
-  }
-
-  if (copyWeek) {
-    copyWeek.addEventListener("click", () => {
-      const memberId = APP_DATA.currentUserId;
-      const week1Blocks = APP_DATA.blocks.filter((b) => b.memberId === memberId && APP_DATA.days.find((d) => d.key === b.dateKey)?.in1w);
-
-      week1Blocks.forEach((b) => {
-        const dayIndex = APP_DATA.days.findIndex((d) => d.key === b.dateKey);
-        if (dayIndex !== -1 && dayIndex + 7 < APP_DATA.days.length) {
-          const nextWeekKey = APP_DATA.days[dayIndex + 7].key;
-          APP_DATA.blocks.push({
-            id: `b_${Date.now()}_${Math.random()}`,
-            memberId: b.memberId,
-            dateKey: nextWeekKey,
-            start: b.start,
-            end: b.end,
-            type: b.type,
-            taskId: b.taskId || null,
-            reason: b.reason || null
-          });
-        }
-      });
-      refreshAllActiveViews();
-      alert("Copied week 1 blocks to week 2.");
-    });
-  }
-
-  const formSched = document.getElementById("form-schedule-block");
-  if (formSched) {
-    formSched.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const existingId = document.getElementById("input-block-id").value;
-      const memberId = parseInt(document.getElementById("input-block-member-id").value);
-      const dateKey = document.getElementById("input-block-date").value;
-      const start = document.getElementById("input-block-start").value;
-      const end = document.getElementById("input-block-end").value;
-      const activeType = document.querySelector("#block-type-selector .btn-type-pill.active").getAttribute("data-type");
-
-      if (parseTimeToMinutes(end) <= parseTimeToMinutes(start)) {
-        alert("End time must be after start time.");
-        return;
-      }
-
-      const blockData = {
-        memberId,
-        dateKey,
-        start,
-        end,
-        type: activeType,
-        taskId: activeType === "work" ? document.getElementById("input-block-task-id").value : null,
-        reason: activeType === "busy" ? document.getElementById("input-block-reason").value.trim() || t("status_busy") : null
-      };
-
-      if (existingId) {
-        const idx = APP_DATA.blocks.findIndex((b) => b.id === existingId);
-        if (idx !== -1) APP_DATA.blocks[idx] = { id: existingId, ...blockData };
-      } else {
-        APP_DATA.blocks.push({ id: `b_${Date.now()}`, ...blockData });
-      }
-
-      closeAllOverlays();
-      refreshAllActiveViews();
-    });
-  }
-
-  const btnDelBlock = document.getElementById("btn-delete-block");
-  if (btnDelBlock) {
-    btnDelBlock.addEventListener("click", () => {
-      const existingId = document.getElementById("input-block-id").value;
-      if (existingId) {
-        APP_DATA.blocks = APP_DATA.blocks.filter((b) => b.id !== existingId);
-        closeAllOverlays();
-        refreshAllActiveViews();
-      }
-    });
-  }
-
-  const btnCreateInline = document.getElementById("btn-create-task-inline");
-  if (btnCreateInline && taskModal) {
-    btnCreateInline.addEventListener("click", () => {
-      closeAllOverlays();
-      setTimeout(() => openModal(taskModal), 120);
-    });
-  }
-
-  const formTask = document.getElementById("form-add-task");
-  if (formTask) {
-    formTask.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const title = document.getElementById("input-task-title").value.trim();
-      const ownerId = parseInt(document.getElementById("input-task-owner").value);
-      const deadlineDate = document.getElementById("input-task-deadline-date").value;
-      const timeVal = document.getElementById("input-task-deadline-time").value;
-      const isImportant = document.querySelector("#group-is-important .pill.active").getAttribute("data-val") === "true";
-      const isUrgent = document.querySelector("#group-is-urgent .pill.active").getAttribute("data-val") === "true";
-
-      let quad = "q4";
-      if (isImportant && isUrgent) quad = "q1";
-      else if (isImportant && !isUrgent) quad = "q2";
-      else if (!isImportant && isUrgent) quad = "q3";
-
-      APP_DATA.tasks.unshift({
-        id: `task-${Date.now()}`,
-        title,
-        ownerId,
-        deadlineDate,
-        deadlineTime: timeVal || null,
-        quadrant: quad,
-        urgent: isUrgent,
-        status: "In Progress",
-        note: ""
-      });
-
-      closeAllOverlays();
-      formTask.reset();
-      refreshAllActiveViews();
-    });
-  }
-
-  const btnToggleDead = document.getElementById("btn-toggle-deadline-time");
-  if (btnToggleDead) {
-    btnToggleDead.addEventListener("click", () => {
-      const box = document.getElementById("deadline-time-container");
-      const isHidden = box.style.display === "none";
-      box.style.display = isHidden ? "block" : "none";
-      btnToggleDead.innerText = isHidden ? "- Remove time" : t("btn_add_time");
-    });
-  }
-
-  document.querySelectorAll("#block-type-selector .btn-type-pill").forEach((p) => {
-    p.addEventListener("click", function () {
-      setBlockTypeActive(this.getAttribute("data-type"));
-    });
-  });
-
-  const btnOpenFind = document.getElementById("open-find-time");
-  const btnRunFind = document.getElementById("btn-run-find");
-  if (btnOpenFind && findModal) btnOpenFind.addEventListener("click", () => openModal(findModal));
-  if (btnRunFind) btnRunFind.addEventListener("click", runFindCalculation);
-
-  document.querySelectorAll(".btn-close, #close-block-modal, #close-add-task, #close-find-modal, #close-drawer").forEach((btn) => {
-    btn.addEventListener("click", closeAllOverlays);
-  });
-  if (overlay) overlay.addEventListener("click", closeAllOverlays);
-
-  setupPillToggle("#group-is-important");
-  setupPillToggle("#group-is-urgent");
-  setupPillToggle("#duration-selector");
-}
-
-function setupPillToggle(selector) {
-  document.querySelectorAll(`${selector} .pill`).forEach((p) => {
-    p.addEventListener("click", function () {
-      this.parentElement.querySelectorAll(".pill").forEach((el) => el.classList.remove("active"));
-      this.classList.add("active");
-    });
-  });
-}
-
-function initPersonPickers() {
-  const activeRoster = getActiveMembers();
-
-  const userSelects = ["sched-person-select", "mat-person-select", "input-task-owner", "me-user-switcher"];
-  userSelects.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      const currentVal = el.value;
-      el.innerHTML = activeRoster.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
-      if (activeRoster.some((m) => String(m.id) === currentVal)) {
-        el.value = currentVal;
-      } else if (activeRoster.length > 0) {
-        el.value = activeRoster[0].id;
-      }
-    }
-  });
-
-  const daySel = document.getElementById("sched-single-day-select");
-  const taskDeadSel = document.getElementById("input-task-deadline-date");
-
-  if (daySel) {
-    daySel.innerHTML = APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
-  }
-  if (taskDeadSel) {
-    taskDeadSel.innerHTML = APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
-  }
-
-  const picker = document.getElementById("person-picker");
-  if (picker) {
-    picker.innerHTML = activeRoster.map((m) => `
-      <label class="person-check-label">
-        <input type="checkbox" value="${m.id}" checked class="person-checkbox">
-        <span>${m.name}</span>
-      </label>
-    `).join("");
-
-    document.querySelectorAll("#person-picker .person-checkbox").forEach((cb) => {
-      cb.addEventListener("change", updateMinSelectOptions);
-    });
-  }
-
-  document.querySelectorAll("#people-scope-selector .pill").forEach((p) => {
-    p.addEventListener("click", function () {
-      this.parentElement.querySelectorAll(".pill").forEach((el) => el.classList.remove("active"));
-      this.classList.add("active");
-      const isSelect = this.getAttribute("data-scope") === "select";
-      const pPicker = document.getElementById("person-picker");
-      if (pPicker) pPicker.style.display = isSelect ? "grid" : "none";
-      updateMinSelectOptions();
-    });
-  });
-
-  const schedPersonSel = document.getElementById("sched-person-select");
-  const matPersonSel = document.getElementById("mat-person-select");
-  const meUserSw = document.getElementById("me-user-switcher");
-
-  if (schedPersonSel) {
-    schedPersonSel.addEventListener("change", (e) => {
-      APP_DATA.scheduleSelectedPersonId = parseInt(e.target.value);
-      renderScheduleView();
-    });
-  }
-
-  if (matPersonSel) {
-    matPersonSel.addEventListener("change", (e) => {
-      APP_DATA.matrixSelectedMemberId = parseInt(e.target.value);
-      renderEisenhowerMatrix();
-    });
-  }
-
-  if (meUserSw) {
-    meUserSw.addEventListener("change", (e) => {
-      APP_DATA.currentUserId = parseInt(e.target.value);
-      renderMePage();
-    });
-  }
-
-  updateMinSelectOptions();
-}
-
-function updateMinSelectOptions() {
-  const select = document.getElementById("min-people-select");
-  if (!select) return;
-  const isEveryone = document.querySelector("#people-scope-selector .pill.active")?.getAttribute("data-scope") === "everyone";
-  const activeCount = getActiveMembers().length;
-  const count = isEveryone ? activeCount : document.querySelectorAll(".person-checkbox:checked").length;
-
-  select.innerHTML = "";
-  if (count === 0) {
-    select.innerHTML = `<option value="0">0</option>`;
-    return;
-  }
-  for (let i = count; i >= Math.max(1, count - 3); i--) {
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.innerText = `${i} / ${count}`;
-    if (i === count || count >= 4 && i === count - 1) opt.selected = true;
-    select.appendChild(opt);
-  }
-}
-
-/* ==========================================================================
-   DYNAMIC FIND A TIME
-   ========================================================================== */
-function runFindCalculation() {
-  const scope = document.querySelector("#people-scope-selector .pill.active").getAttribute("data-scope");
-  const selectedIds = scope === "everyone" ?
-    getActiveMembers().map((m) => m.id) :
-    Array.from(document.querySelectorAll(".person-checkbox:checked")).map((el) => parseInt(el.value));
-
-  const durationMin = parseInt(document.querySelector("#duration-selector .pill.active").getAttribute("data-minutes")) || 120;
-  const minRequired = parseInt(document.getElementById("min-people-select").value) || 1;
-  const days = APP_DATA.days;
-  const resultsContainer = document.getElementById("find-results");
-  const resultList = document.getElementById("result-items");
-
-  if (!resultsContainer || !resultList) return;
-
-  resultsContainer.style.display = "block";
-  const matches = [];
-
-  days.forEach((day) => {
-    const checkRanges = [
-      { start: 540, end: 720 },
-      { start: 780, end: 1020 },
-      { start: 1080, end: 1260 }
-    ];
-
-    checkRanges.forEach((windowRange) => {
-      for (let s = windowRange.start; s + durationMin <= windowRange.end; s += 60) {
-        const e = s + durationMin;
-        const q = calculateExactQuorum(day.key, s, e, selectedIds);
-        if (q.available >= minRequired) {
-          matches.push({ day, startMin: s, endMin: e, q });
-        }
-      }
-    });
-  });
-
-  if (matches.length === 0) {
-    resultList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:8px 0;">${t("empty_no_slots")}</div>`;
-    return;
-  }
-
-  resultList.innerHTML = matches.map(({ day, startMin, endMin, q }) => `
-    <div class="result-card">
-      <div>
-        <strong style="font-size:0.9rem;">${day.dateStr} · ${formatMinutesToTime(startMin)}–${formatMinutesToTime(endMin)}</strong>
-        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
-          ${q.available} / ${q.total} ${t("status_available")} (${q.conflicts.length} conflict(s))
-        </div>
-      </div>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" 
-              onclick="openRangeInspector('${day.key}', ${startMin}, ${endMin}, '${day.dateStr} · ${formatMinutesToTime(startMin)}–${formatMinutesToTime(endMin)}')">${t("inspect_arrow")}</button>
-    </div>
-  `).join("");
-}
-
-function openModal(modalEl) {
-  if (!modalEl) return;
-  const overlay = document.getElementById("overlay");
-  if (overlay) overlay.classList.add("active");
-  modalEl.classList.add("active");
-}
-
-function closeAllOverlays() {
-  const overlay = document.getElementById("overlay");
-  if (overlay) overlay.classList.remove("active");
-  document.querySelectorAll(".modal, .drawer").forEach((el) => el.classList.remove("active"));
-}
+    <h2 id="drawer-title" style="margin: 0 0 16px 0; font-size: 1.2rem;"></h2>
+    <div id="drawer-body"></div>
+  </aside>
+
+  <!-- 1. โหลด Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+  <!-- 2. โหลด JavaScript การทำงานหลัก -->
+  <script src="script.js"></script>
+</body>
+</html>
