@@ -1,3 +1,54 @@
+// --- Firebase Config & Auth Setup ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCuraBGP70g64YzTkIknr1mTsY9xQrpjFs",
+  authDomain: "time-team-ccc31.firebaseapp.com",
+  projectId: "time-team-ccc31",
+  storageBucket: "time-team-ccc31.firebasestorage.app",
+  messagingSenderId: "378099824478",
+  appId: "1:378099824478:web:9e6a42ec53119a717141cf",
+  measurementId: "G-8S1Y7V9X2T"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+window.addEventListener("DOMContentLoaded", () => {
+  const btnLogin = document.getElementById("btn-login");
+  const btnLogout = document.getElementById("btn-logout");
+  const userInfo = document.getElementById("user-info");
+  const userName = document.getElementById("user-name");
+  const userAvatar = document.getElementById("user-avatar");
+
+  if (btnLogin) {
+    btnLogin.addEventListener("click", () => {
+      auth.signInWithPopup(provider).catch((error) => {
+        alert("เข้าสู่ระบบไม่สำเร็จ: " + error.message);
+      });
+    });
+  }
+
+  if (btnLogout) {
+    btnLogout.addEventListener("click", () => {
+      auth.signOut();
+    });
+  }
+
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      if (btnLogin) btnLogin.style.display = "none";
+      if (userInfo) userInfo.style.display = "flex";
+      if (userName) userName.textContent = user.displayName;
+      if (userAvatar) userAvatar.src = user.photoURL;
+    } else {
+      if (btnLogin) btnLogin.style.display = "block";
+      if (userInfo) userInfo.style.display = "none";
+    }
+  });
+});
+// ------------------------------------
 /* ==========================================================================
    TRANSLATION DICTIONARY (THAI / ENGLISH)
    ========================================================================== */
