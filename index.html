@@ -59,6 +59,8 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             <span data-i18n="btn_find_time">ค้นหาเวลาว่าง</span>
           </button>
+          <button class="btn btn-secondary" id="open-meeting-joint">+ ประชุมร่วม</button>
+          <button class="btn btn-secondary" id="open-meeting-separate">+ ประชุมแยก</button>
         </div>
       </header>
 
@@ -84,6 +86,7 @@
           <div class="schedule-legend">
             <span class="legend-item"><span class="legend-box block-available"></span> <span data-i18n="status_free">ว่าง</span></span>
             <span class="legend-item"><span class="legend-box block-work"></span> <span data-i18n="status_work">ทำงาน</span></span>
+            <span class="legend-item"><span class="legend-box block-meeting"></span> <span data-i18n="status_meeting">ประชุม</span></span>
             <span class="legend-item"><span class="legend-box block-busy"></span> <span data-i18n="status_busy">ไม่ว่าง</span></span>
             <span class="legend-item"><span class="legend-box block-nodata"></span> <span data-i18n="status_nodata">ไม่มีข้อมูล</span></span>
           </div>
@@ -118,6 +121,11 @@
               <span class="dot dot-busy"></span>
               <span class="stat-count" id="count-busy">0</span>
               <span class="stat-label" data-i18n="status_busy">ติดธุระ</span>
+            </div>
+            <div class="status-stat" data-status="meeting">
+              <span class="dot dot-meeting"></span>
+              <span class="stat-count" id="count-meeting">0</span>
+              <span class="stat-label" data-i18n="status_meeting">ประชุม</span>
             </div>
             <div class="status-stat" data-status="nodata">
               <span class="dot dot-nodata"></span>
@@ -470,10 +478,11 @@
 
         <div class="form-group" style="margin-top:14px;">
           <label class="form-label" data-i18n="label_status">สถานะ</label>
-          <div class="type-pill-selector" id="block-type-selector">
+          <div class="type-pill-selector type-pill-selector-4" id="block-type-selector">
             <button type="button" class="btn-type-pill active" data-type="available" data-i18n="status_available">ว่าง</button>
             <button type="button" class="btn-type-pill" data-type="work" data-i18n="status_work">ทำงาน</button>
             <button type="button" class="btn-type-pill" data-type="busy" data-i18n="status_busy">ติดธุระ</button>
+            <button type="button" class="btn-type-pill" data-type="meeting" data-i18n="status_meeting">ประชุม</button>
           </div>
         </div>
 
@@ -489,8 +498,12 @@
 
         <div id="block-busy-section" style="display:none;" class="sub-form-box">
           <div class="form-group">
-            <label class="form-label" data-i18n="label_short_reason">ระบุเหตุผลสั้น ๆ</label>
+            <label class="form-label" id="label-block-reason" data-i18n="label_short_reason">ระบุเหตุผลสั้น ๆ</label>
             <input type="text" class="form-input" id="input-block-reason" placeholder="เช่น ติดเรียน, ธุระส่วนตัว" />
+            <div class="reason-chip-row" id="reason-chip-row">
+              <button type="button" class="btn-chip" data-reason-val="เรียน">เรียน</button>
+              <button type="button" class="btn-chip" data-reason-val="ธุระส่วนตัว">ธุระส่วนตัว</button>
+            </div>
           </div>
         </div>
 
@@ -506,13 +519,15 @@
   <div class="modal modal-sm" id="add-task-modal">
     <div class="modal-header">
       <div>
-        <h3 class="modal-title" data-i18n="new_task_title">สร้างงานใหม่</h3>
-        <p class="modal-caption" data-i18n="new_task_desc">กำหนดเดดไลน์และระดับความสำคัญ</p>
+        <h3 class="modal-title" id="add-task-modal-title" data-i18n="new_task_title">สร้างงานใหม่</h3>
+        <p class="modal-caption" id="add-task-modal-desc" data-i18n="new_task_desc">กำหนดเดดไลน์และระดับความสำคัญ</p>
       </div>
       <button class="btn-close" id="close-add-task">&times;</button>
     </div>
     <div class="modal-body">
       <form id="form-add-task">
+        <input type="hidden" id="input-task-id" value="" />
+
         <div class="form-group">
           <label class="form-label" data-i18n="label_task_title">ชื่องาน</label>
           <input type="text" class="form-input" id="input-task-title" placeholder="เช่น รายงานประจำสัปดาห์" required />
@@ -552,7 +567,10 @@
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;" data-i18n="btn_save_task">บันทึกงาน</button>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn btn-secondary btn-danger-outline" id="btn-delete-task-inline" style="display:none;">ลบงานนี้</button>
+          <button type="submit" class="btn btn-primary" style="flex:1;" data-i18n="btn_save_task">บันทึกงาน</button>
+        </div>
       </form>
     </div>
   </div>
@@ -600,6 +618,50 @@
         <h4 class="results-heading" data-i18n="results_heading">ผลการค้นหา</h4>
         <div class="result-list" id="result-items"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Bulk Meeting (Joint / Separate) -->
+  <div class="modal modal-sm" id="meeting-bulk-modal">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title" id="meeting-bulk-title">สร้างประชุม</h3>
+        <p class="modal-caption" id="meeting-bulk-desc">กำหนดวัน เวลา และผู้เข้าร่วม</p>
+      </div>
+      <button class="btn-close" id="close-meeting-bulk">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-meeting-bulk">
+        <input type="hidden" id="input-meeting-mode" value="joint" />
+
+        <div class="form-group">
+          <label class="form-label">ชื่อประชุม</label>
+          <input type="text" class="form-input" id="input-meeting-title" placeholder="เช่น ประชุมทีมประจำสัปดาห์" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">วันที่</label>
+          <select class="form-select" id="input-meeting-date" required></select>
+        </div>
+
+        <div class="time-range-row">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">เวลาเริ่ม</label>
+            <input type="time" class="form-input" id="input-meeting-start" value="10:00" required />
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">เวลาสิ้นสุด</label>
+            <input type="time" class="form-input" id="input-meeting-end" value="11:00" required />
+          </div>
+        </div>
+
+        <div class="form-group" id="meeting-participants-group" style="display:none;">
+          <label class="form-label">ผู้เข้าร่วม</label>
+          <div class="person-checkbox-grid" id="meeting-person-picker"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">สร้างประชุม</button>
+      </form>
     </div>
   </div>
 

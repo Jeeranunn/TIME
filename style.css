@@ -17,6 +17,8 @@
   --status-work-text: #1E4E8C;
   --status-busy-bg: #FDF3E7;
   --status-busy-text: #925313;
+  --status-meeting-bg: #F3EEFB;
+  --status-meeting-text: #5B3E9E;
   --status-nodata-bg: #F4F4F2;
   --status-nodata-text: #787874;
 
@@ -205,6 +207,9 @@ body {
   cursor: pointer;
 }
 .btn-chip:hover { background: #F0F0EE; }
+.btn-chip.active { background: var(--text-primary); color: #FFF; border-color: var(--text-primary); }
+
+.reason-chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 
 .segmented-control {
   display: flex;
@@ -259,7 +264,7 @@ body {
 .slot-arrow { font-size: 0.8rem; color: var(--text-muted); }
 
 /* COMPACT MATRIX GRID */
-.schedule-legend { display: flex; align-items: center; gap: 12px; font-size: 0.76rem; color: var(--text-secondary); }
+.schedule-legend { display: flex; align-items: center; gap: 12px; font-size: 0.76rem; color: var(--text-secondary); flex-wrap: wrap; }
 .legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .legend-box { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 
@@ -336,6 +341,7 @@ body {
 .block-available { background: var(--status-avail-bg); color: var(--status-avail-text); }
 .block-work { background: var(--status-work-bg); color: var(--status-work-text); }
 .block-busy { background: var(--status-busy-bg); color: var(--status-busy-text); }
+.block-meeting { background: var(--status-meeting-bg); color: var(--status-meeting-text); }
 .block-nodata { background: var(--status-nodata-bg); color: var(--status-nodata-text); font-style: italic; }
 
 /* DETAILED CONTINUOUS TIMELINE */
@@ -508,7 +514,7 @@ body {
 /* TEAM NOW BAR */
 .status-summary-bar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   background: var(--bg-app);
   padding: 10px;
@@ -521,6 +527,7 @@ body {
 .dot-available { background: #2A9D57; }
 .dot-work { background: #2B70C9; }
 .dot-busy { background: #C97A24; }
+.dot-meeting { background: #7C57C9; }
 .dot-nodata { background: #9E9E99; }
 
 .stat-count { font-size: 1.15rem; font-weight: 700; line-height: 1; }
@@ -546,6 +553,7 @@ body {
 .tag-available { background: var(--status-avail-bg); color: var(--status-avail-text); }
 .tag-work { background: var(--status-work-bg); color: var(--status-work-text); }
 .tag-busy { background: var(--status-busy-bg); color: var(--status-busy-text); }
+.tag-meeting { background: var(--status-meeting-bg); color: var(--status-meeting-text); }
 .tag-nodata { background: var(--status-nodata-bg); color: var(--status-nodata-text); }
 
 /* EISENHOWER MATRIX */
@@ -771,6 +779,7 @@ body {
 .duration-shortcuts { display: flex; align-items: center; gap: 6px; margin-top: -6px; margin-bottom: 12px; }
 
 .type-pill-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.type-pill-selector-4 { grid-template-columns: repeat(4, 1fr); }
 .btn-type-pill {
   padding: 8px;
   font-size: 0.82rem;
@@ -785,6 +794,7 @@ body {
 .btn-type-pill.active[data-type="available"] { background: var(--status-avail-bg); color: var(--status-avail-text); border-color: #B7E4C7; }
 .btn-type-pill.active[data-type="work"] { background: var(--status-work-bg); color: var(--status-work-text); border-color: #BDD5EA; }
 .btn-type-pill.active[data-type="busy"] { background: var(--status-busy-bg); color: var(--status-busy-text); border-color: #F8D7A6; }
+.btn-type-pill.active[data-type="meeting"] { background: var(--status-meeting-bg); color: var(--status-meeting-text); border-color: #D7C7EF; }
 
 .sub-form-box { background: #FAF9F7; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 14px; }
 .modal-footer-actions { display: flex; gap: 10px; margin-top: 20px; }
@@ -899,4 +909,5 @@ body {
   .two-col-layout { grid-template-columns: 1fr; gap: 18px; }
   .user-activity { max-width: 170px; }
   .eisenhower-2x2-wrapper { grid-template-columns: 1fr; gap: 14px; }
+  .status-summary-bar { grid-template-columns: repeat(3, 1fr); }
 }

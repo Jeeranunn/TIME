@@ -22,6 +22,7 @@ const I18N = {
     status_working: "กำลังทำงาน",
     status_work: "ทำงาน",
     status_busy: "ติดธุระ",
+    status_meeting: "ประชุม",
     status_nodata: "ไม่มีข้อมูล",
     status_live: "สด",
     team_now_title: "สถานะทีมตอนนี้",
@@ -118,6 +119,7 @@ const I18N = {
     status_working: "Working",
     status_work: "Work",
     status_busy: "Busy",
+    status_meeting: "Meeting",
     status_nodata: "No Data",
     status_live: "Live",
     team_now_title: "Team Now",
@@ -221,36 +223,67 @@ const tasksCol = db.collection("tasks");
 const blocksCol = db.collection("blocks");
 const blockNotesCol = db.collection("block_notes");
 
-/* ---- Load everything from Firestore into APP_DATA ---- */
-async function loadAllData() {
-  try {
-    const [membersSnap, tasksSnap, blocksSnap, notesSnap] = await Promise.all([
-    membersCol.orderBy("id").get(),
-    tasksCol.get(),
-    blocksCol.get(),
-    blockNotesCol.orderBy("createdAt").get()]
-    );
+/* ---- Realtime listeners: keep APP_DATA in sync with Firestore live ----
+   Replaces the old one-shot .get() calls. Anyone's edit anywhere shows up
+   here within moments, without anyone needing to refresh the page. ---- */
+let __initialLoadDone = false;
+let __loadedFlags = { members: false, tasks: false, blocks: false, notes: false };
 
-    APP_DATA.members = membersSnap.docs.map((d) => d.data());
-    APP_DATA.tasks = tasksSnap.docs.map((d) => d.data());
-    APP_DATA.blocks = blocksSnap.docs.map((d) => d.data());
+function handleFirestoreError(label) {
+  return (err) => {
+    console.error(`Firestore listener error (${label}):`, err);
+    if (!__initialLoadDone) {
+      alert("โหลดข้อมูลจากฐานข้อมูลไม่สำเร็จ กรุณาตรวจสอบ firebaseConfig และ Firestore security rules แล้วดู console สำหรับรายละเอียด");
+    }
+  };
+}
 
-    APP_DATA.blockNotes = {};
-    notesSnap.docs.forEach((d) => {
-      const n = d.data();
-      if (!APP_DATA.blockNotes[n.blockId]) APP_DATA.blockNotes[n.blockId] = [];
-      APP_DATA.blockNotes[n.blockId].push(`${n.author || "User"}: ${n.text}`);
-    });
-
+function checkInitialLoadComplete(onReady) {
+  if (__initialLoadDone) return;
+  if (__loadedFlags.members && __loadedFlags.tasks && __loadedFlags.blocks && __loadedFlags.notes) {
+    __initialLoadDone = true;
     if (!APP_DATA.members.find((m) => m.id === APP_DATA.currentUserId)) {
       APP_DATA.currentUserId = APP_DATA.members.length > 0 ? APP_DATA.members[0].id : null;
     }
     APP_DATA.scheduleSelectedPersonId = APP_DATA.currentUserId;
     APP_DATA.matrixSelectedMemberId = APP_DATA.currentUserId;
-  } catch (err) {
-    console.error("Failed to load data from Firestore:", err);
-    alert("โหลดข้อมูลจากฐานข้อมูลไม่สำเร็จ กรุณาตรวจสอบ firebaseConfig และ Firestore security rules แล้วดู console สำหรับรายละเอียด");
+    onReady();
   }
+}
+
+function setupRealtimeListeners(onReady) {
+  membersCol.orderBy("id").onSnapshot((snap) => {
+    APP_DATA.members = snap.docs.map((d) => d.data());
+    __loadedFlags.members = true;
+    if (__initialLoadDone) { initPersonPickers(); refreshAllActiveViews(); }
+    else checkInitialLoadComplete(onReady);
+  }, handleFirestoreError("members"));
+
+  tasksCol.onSnapshot((snap) => {
+    APP_DATA.tasks = snap.docs.map((d) => d.data());
+    __loadedFlags.tasks = true;
+    if (__initialLoadDone) refreshAllActiveViews();
+    else checkInitialLoadComplete(onReady);
+  }, handleFirestoreError("tasks"));
+
+  blocksCol.onSnapshot((snap) => {
+    APP_DATA.blocks = snap.docs.map((d) => d.data());
+    __loadedFlags.blocks = true;
+    if (__initialLoadDone) refreshAllActiveViews();
+    else checkInitialLoadComplete(onReady);
+  }, handleFirestoreError("blocks"));
+
+  blockNotesCol.orderBy("createdAt").onSnapshot((snap) => {
+    APP_DATA.blockNotes = {};
+    snap.docs.forEach((d) => {
+      const n = d.data();
+      if (!APP_DATA.blockNotes[n.blockId]) APP_DATA.blockNotes[n.blockId] = [];
+      APP_DATA.blockNotes[n.blockId].push(`${n.author || "User"}: ${n.text}`);
+    });
+    __loadedFlags.notes = true;
+    if (__initialLoadDone) refreshAllActiveViews();
+    else checkInitialLoadComplete(onReady);
+  }, handleFirestoreError("notes"));
 }
 
 let currentLang = "th";
@@ -260,6 +293,52 @@ function t(key, ...args) {
   if (typeof val === "function") return val(...args);
   return val || key;
 }
+
+/* ==========================================================================
+   DYNAMIC DATE SYSTEM
+   ==========================================================================
+   Dates used to be hand-typed and hardcoded to a fixed 14-day window, which
+   silently drifted out of sync with reality (and had at least one wrong
+   weekday label). generateDays() computes everything from the browser's
+   actual current date, so "today" is always correct and the window keeps
+   moving forward on its own — no manual updates ever needed again.
+   ========================================================================== */
+const DOW_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MON_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function dateToKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Generates `numDays` days starting today (real, current date), for use as
+// APP_DATA.days. Called fresh on every page load, so it's never stale.
+function generateDays(numDays = 60) {
+  const days = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 0; i < numDays; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push({
+      key: dateToKey(d),
+      dateStr: `${DOW_EN[d.getDay()]} ${String(d.getDate()).padStart(2, "0")} ${MON_EN[d.getMonth()]}`,
+      short: `${String(d.getDate()).padStart(2, "0")} ${MON_EN[d.getMonth()]}`,
+      in1w: i < 7
+    });
+  }
+  return days;
+}
+
+// Returns [startMin, endMin] of whichever period (morning/afternoon/evening)
+// contains the current real clock time, falling back to the first period.
+function getCurrentPeriodRange() {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const period = APP_DATA.periods.find((p) => nowMin >= p.startMin && nowMin < p.endMin);
+  return period ? [period.startMin, period.endMin] : [APP_DATA.periods[0].startMin, APP_DATA.periods[0].endMin];
+}
+
+const INITIAL_DAYS = generateDays(60);
 
 /* ==========================================================================
    CENTRAL DATA ARCHITECTURE (DYNAMIC TEAM & SHARED DATA)
@@ -272,7 +351,7 @@ const APP_DATA = {
   scheduleMode: "overview", // 'overview' | 'detailed'
   scheduleSelectedPersonId: 1,
   scheduleRange: "2w",
-  scheduleDetailedDay: "2026-09-18",
+  scheduleDetailedDay: INITIAL_DAYS[0].key,
 
   matrixFilterMode: "team",
   matrixSelectedMemberId: 1,
@@ -285,22 +364,10 @@ const APP_DATA = {
     q4: { code: "q4", labelKey: "q4_name", css: "pri-q4" }
   },
 
-  days: [
-  { key: "2026-09-18", dateStr: "Thu 18 Sep", short: "18 Sep", in1w: true },
-  { key: "2026-09-19", dateStr: "Fri 19 Sep", short: "19 Sep", in1w: true },
-  { key: "2026-09-20", dateStr: "Sat 20 Sep", short: "20 Sep", in1w: true },
-  { key: "2026-09-21", dateStr: "Sun 21 Sep", short: "21 Sep", in1w: true },
-  { key: "2026-09-22", dateStr: "Mon 22 Sep", short: "22 Sep", in1w: true },
-  { key: "2026-09-23", dateStr: "Tue 23 Sep", short: "23 Sep", in1w: true },
-  { key: "2026-09-24", dateStr: "Wed 24 Sep", short: "24 Sep", in1w: true },
-  { key: "2026-09-25", dateStr: "Thu 25 Sep", short: "25 Sep", in1w: false },
-  { key: "2026-09-26", dateStr: "Fri 26 Sep", short: "26 Sep", in1w: false },
-  { key: "2026-09-27", dateStr: "Sat 27 Sep", short: "27 Sep", in1w: false },
-  { key: "2026-09-28", dateStr: "Sun 28 Sep", short: "28 Sep", in1w: false },
-  { key: "2026-09-29", dateStr: "Mon 29 Sep", short: "29 Sep", in1w: false },
-  { key: "2026-09-30", dateStr: "Tue 30 Sep", short: "30 Sep", in1w: false },
-  { key: "2026-10-01", dateStr: "Wed 01 Oct", short: "01 Oct", in1w: false }],
-
+  // Rolling 60-day window computed fresh from today — see generateDays() above.
+  // "in1w" flags the first 7 days for the 1-week toggle; the 2-week toggle
+  // takes the first 14 days of this array (see TWO_WEEK_LEN below).
+  days: INITIAL_DAYS,
 
   periods: [
   { key: "morning", label: "Morning", time: "09:00–12:00", startMin: 540, endMin: 720 },
@@ -399,13 +466,20 @@ function sortTasksByDeadline(a, b) {
 /* ==========================================================================
    APP INITIALIZATION & TRANSLATION ENGINE
    ========================================================================== */
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadAllData();
-  setupNavigation();
-  setupGlobalControls();
-  initPersonPickers();
-  updateStaticTranslations();
-  refreshAllActiveViews();
+document.addEventListener("DOMContentLoaded", () => {
+  setupRealtimeListeners(() => {
+    setupNavigation();
+    setupGlobalControls();
+    initPersonPickers();
+    updateStaticTranslations();
+    refreshAllActiveViews();
+
+    // Keep "current period" (morning/afternoon/evening) accurate even if the
+    // tab is left open across a time boundary — re-render every minute.
+    setInterval(() => {
+      if (APP_DATA.activeView === "overview") renderTeamNowSummary();
+    }, 60000);
+  });
 });
 
 function setLanguage(lang) {
@@ -460,7 +534,7 @@ function refreshAllActiveViews() {
    VIEW 1: OVERVIEW IMPLEMENTATION
    ========================================================================== */
 function renderOverviewSharedSlots() {
-  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
+  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days.slice(0, 14);
   const candidateSlots = [];
 
   days.forEach((day) => {
@@ -494,7 +568,7 @@ function renderOverviewSchedule() {
   const table = document.getElementById("team-schedule-table");
   if (!table) return;
 
-  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
+  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days.slice(0, 14);
   const periods = APP_DATA.periods;
   const activeRoster = getActiveMembers();
   const columns = [];
@@ -537,7 +611,7 @@ function renderOverviewSchedule() {
   let body = activeRoster.map((m) => {
     let cells = columns.map((c) => {
       const st = getMemberStatusInRange(m.id, c.day.key, c.period.startMin, c.period.endMin);
-      let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
+      let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : st.type === "meeting" ? t("status_meeting") : "—";
       return `
         <td class="sched-grid-cell ${c.isHigh ? 'col-subtle-tint' : ''}">
           <div class="compact-tile block-${st.type}" onclick="openRangeInspector('${c.day.key}', ${c.period.startMin}, ${c.period.endMin}, '${c.day.dateStr} · ${c.period.label}')">
@@ -555,10 +629,9 @@ function renderOverviewSchedule() {
 
 function renderTeamNowSummary() {
   const container = document.getElementById("team-now-list");
-  const counts = { available: 0, work: 0, busy: 0, nodata: 0 };
-  const todayKey = "2026-09-18";
-  const nowStart = 540;
-  const nowEnd = 720;
+  const counts = { available: 0, work: 0, busy: 0, meeting: 0, nodata: 0 };
+  const todayKey = APP_DATA.days[0].key;
+  const [nowStart, nowEnd] = getCurrentPeriodRange();
   const activeRoster = getActiveMembers();
 
   container.innerHTML = activeRoster.map((m) => {
@@ -571,6 +644,8 @@ function renderTeamNowSummary() {
       detail = `${t("status_work")} · ${task ? task.title : 'Task'}`;
     } else if (block.type === "busy") {
       detail = `${t("status_busy")} · ${block.reason || 'Busy'}`;
+    } else if (block.type === "meeting") {
+      detail = `${t("status_meeting")} · ${block.reason || t("status_meeting")}`;
     } else if (block.type === "nodata") {
       detail = t("status_nodata");
     }
@@ -592,6 +667,7 @@ function renderTeamNowSummary() {
   document.getElementById("count-available").innerText = counts.available;
   document.getElementById("count-work").innerText = counts.work;
   document.getElementById("count-busy").innerText = counts.busy;
+  document.getElementById("count-meeting").innerText = counts.meeting;
   document.getElementById("count-nodata").innerText = counts.nodata;
 }
 
@@ -615,7 +691,7 @@ function renderOverviewMatrixSnapshot() {
 }
 
 function renderOverviewDeadlines() {
-  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
+  const days = APP_DATA.overviewRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days.slice(0, 14);
   const dayKeys = days.map((d) => d.key);
   const container = document.getElementById("deadline-list");
 
@@ -676,7 +752,7 @@ function renderScheduleView() {
 }
 
 function renderScheduleTeamOverview(container) {
-  const days = APP_DATA.scheduleRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
+  const days = APP_DATA.scheduleRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days.slice(0, 14);
   const periods = APP_DATA.periods;
   const activeRoster = getActiveMembers();
   const columns = [];
@@ -715,7 +791,7 @@ function renderScheduleTeamOverview(container) {
               <td class="sticky-col">${m.name}</td>
               ${columns.map((c) => {
     const st = getMemberStatusInRange(m.id, c.day.key, c.period.startMin, c.period.endMin);
-    let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
+    let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : st.type === "meeting" ? t("status_meeting") : "—";
     return `
                   <td class="sched-grid-cell ${c.isHigh ? 'col-subtle-tint' : ''}">
                     <div class="compact-tile block-${st.type}" onclick="openRangeInspector('${c.day.key}', ${c.period.startMin}, ${c.period.endMin}, '${c.day.dateStr} · ${c.period.label}')">
@@ -840,7 +916,7 @@ function renderScheduleTeamDetailed(container) {
 
 function renderSchedulePersonOverview(container) {
   const member = APP_DATA.members.find((m) => m.id === APP_DATA.scheduleSelectedPersonId) || getActiveMembers()[0];
-  const days = APP_DATA.scheduleRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days;
+  const days = APP_DATA.scheduleRange === "1w" ? APP_DATA.days.filter((d) => d.in1w) : APP_DATA.days.slice(0, 14);
 
   container.innerHTML = `
     <div class="col-card">
@@ -855,7 +931,7 @@ function renderSchedulePersonOverview(container) {
             <div class="my-segments-wrap">
               ${APP_DATA.periods.map((p) => {
     const st = getMemberStatusInRange(member.id, d.key, p.startMin, p.endMin);
-    let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : "—";
+    let label = st.type === "available" ? t("status_free") : st.type === "work" ? t("status_work") : st.type === "busy" ? t("status_busy") : st.type === "meeting" ? t("status_meeting") : "—";
     return `
                   <button class="my-segment-btn block-${st.type}" onclick="openBlockInputModal(${member.id}, '${d.key}', '${formatMinutesToTime(p.startMin)}', '${formatMinutesToTime(p.endMin)}')">
                     ${p.label}: ${label}
@@ -1060,7 +1136,20 @@ function setBlockTypeActive(type) {
     p.classList.toggle("active", p.getAttribute("data-type") === type);
   });
   document.getElementById("block-work-section").style.display = type === "work" ? "block" : "none";
-  document.getElementById("block-busy-section").style.display = type === "busy" ? "block" : "none";
+  document.getElementById("block-busy-section").style.display = type === "busy" || type === "meeting" ? "block" : "none";
+
+  const reasonLabel = document.getElementById("label-block-reason");
+  const reasonInput = document.getElementById("input-block-reason");
+  const chipRow = document.getElementById("reason-chip-row");
+  if (type === "meeting") {
+    reasonLabel.innerText = "ชื่อประชุม";
+    reasonInput.placeholder = "เช่น ประชุมทีมประจำสัปดาห์";
+    chipRow.style.display = "none";
+  } else {
+    reasonLabel.innerText = t("label_short_reason");
+    reasonInput.placeholder = "เช่น ติดเรียน, ธุระส่วนตัว";
+    chipRow.style.display = "flex";
+  }
 }
 
 window.adjustBlockDuration = function (minutesToAdd) {
@@ -1211,6 +1300,13 @@ function openBlockDetailInspector(blockId) {
         <div style="font-weight:600; font-size:0.95rem; margin-top:4px;">${block.reason || t("status_busy")}</div>
       </div>
     `;
+  } else if (block.type === "meeting") {
+    content = `
+      <div class="drawer-task-box" style="border-left:3px solid #7C57C9;">
+        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">${t("status_meeting")}</div>
+        <div style="font-weight:600; font-size:0.95rem; margin-top:4px;">${block.reason || t("status_meeting")}</div>
+      </div>
+    `;
   } else {
     content = `
       <div class="drawer-task-box" style="background:var(--status-avail-bg);">
@@ -1309,6 +1405,11 @@ function openTaskInspector(taskId) {
       </div>
     </div>
 
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="openEditTaskModal('${task.id}')">${currentLang === 'th' ? 'แก้ไขงาน' : 'Edit Task'}</button>
+      <button class="btn btn-secondary btn-danger-outline" style="flex:1;" onclick="deleteTask('${task.id}')">${currentLang === 'th' ? 'ลบงาน' : 'Delete Task'}</button>
+    </div>
+
     <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:14px;">
       <span style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px;">
         Change Quadrant
@@ -1326,11 +1427,101 @@ function openTaskInspector(taskId) {
   drawer.classList.add("active");
 }
 
-window.moveTaskQuadrant = function (taskId, newQuadrant) {
+/* ==========================================================================
+   TASK CREATE / EDIT / DELETE
+   ========================================================================== */
+function resetTaskModalToCreateMode() {
+  document.getElementById("input-task-id").value = "";
+  document.getElementById("form-add-task").reset();
+  document.getElementById("add-task-modal-title").innerText = t("new_task_title");
+  document.getElementById("add-task-modal-desc").innerText = t("new_task_desc");
+  document.getElementById("btn-delete-task-inline").style.display = "none";
+  document.getElementById("deadline-time-container").style.display = "none";
+  document.getElementById("btn-toggle-deadline-time").innerText = t("btn_add_time");
+}
+
+window.openEditTaskModal = function (taskId) {
   const task = APP_DATA.tasks.find((t) => t.id === taskId);
   if (!task) return;
+
+  closeAllOverlays();
+
+  document.getElementById("input-task-id").value = task.id;
+  document.getElementById("add-task-modal-title").innerText = currentLang === "th" ? "แก้ไขงาน" : "Edit Task";
+  document.getElementById("add-task-modal-desc").innerText = currentLang === "th" ? "แก้ไขรายละเอียดและระดับความสำคัญของงาน" : "Update task details and priority";
+
+  document.getElementById("input-task-title").value = task.title;
+  document.getElementById("input-task-owner").value = task.ownerId;
+  document.getElementById("input-task-deadline-date").value = task.deadlineDate;
+
+  const timeContainer = document.getElementById("deadline-time-container");
+  if (task.deadlineTime) {
+    timeContainer.style.display = "block";
+    document.getElementById("input-task-deadline-time").value = task.deadlineTime;
+    document.getElementById("btn-toggle-deadline-time").innerText = "- Remove time";
+  } else {
+    timeContainer.style.display = "none";
+    document.getElementById("input-task-deadline-time").value = "17:00";
+    document.getElementById("btn-toggle-deadline-time").innerText = t("btn_add_time");
+  }
+
+  const isImportant = task.quadrant === "q1" || task.quadrant === "q2";
+  const isUrgent = task.quadrant === "q1" || task.quadrant === "q3";
+  document.querySelectorAll("#group-is-important .pill").forEach((p) => {
+    p.classList.toggle("active", (p.getAttribute("data-val") === "true") === isImportant);
+  });
+  document.querySelectorAll("#group-is-urgent .pill").forEach((p) => {
+    p.classList.toggle("active", (p.getAttribute("data-val") === "true") === isUrgent);
+  });
+
+  document.getElementById("btn-delete-task-inline").style.display = "inline-block";
+
+  setTimeout(() => openModal(document.getElementById("add-task-modal")), 120);
+};
+
+window.deleteTask = async function (taskId) {
+  const task = APP_DATA.tasks.find((t) => t.id === taskId);
+  if (!task) return;
+
+  const confirmMsg = currentLang === "th" ?
+  `ลบงาน "${task.title}" ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้` :
+  `Delete task "${task.title}"? This cannot be undone.`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    await tasksCol.doc(taskId).delete();
+    const linkedBlocks = APP_DATA.blocks.filter((b) => b.taskId === taskId);
+    if (linkedBlocks.length > 0) {
+      const batch = db.batch();
+      linkedBlocks.forEach((b) => batch.update(blocksCol.doc(b.id), { taskId: null }));
+      await batch.commit();
+    }
+  } catch (err) {
+    alert("ลบงานไม่สำเร็จ: " + err.message);
+    return;
+  }
+
+  APP_DATA.tasks = APP_DATA.tasks.filter((t) => t.id !== taskId);
+  APP_DATA.blocks.forEach((b) => { if (b.taskId === taskId) b.taskId = null; });
+
+  closeAllOverlays();
+  refreshAllActiveViews();
+};
+
+window.moveTaskQuadrant = async function (taskId, newQuadrant) {
+  const task = APP_DATA.tasks.find((t) => t.id === taskId);
+  if (!task) return;
+  const urgent = newQuadrant === "q1" || newQuadrant === "q3";
+
+  try {
+    await tasksCol.doc(taskId).update({ quadrant: newQuadrant, urgent });
+  } catch (err) {
+    alert("อัปเดตไม่สำเร็จ: " + err.message);
+    return;
+  }
+
   task.quadrant = newQuadrant;
-  task.urgent = newQuadrant === "q1" || newQuadrant === "q3";
+  task.urgent = urgent;
   refreshAllActiveViews();
   openTaskInspector(taskId);
 };
@@ -1338,6 +1529,42 @@ window.moveTaskQuadrant = function (taskId, newQuadrant) {
 /* ==========================================================================
    GLOBAL CONTROLS & EVENT BINDINGS
    ========================================================================== */
+/* ==========================================================================
+   BULK MEETING (ประชุมร่วม / ประชุมแยก)
+   ========================================================================== */
+function openMeetingBulkModal(mode) {
+  document.getElementById("input-meeting-mode").value = mode;
+  document.getElementById("form-meeting-bulk").reset();
+  document.getElementById("input-meeting-start").value = "10:00";
+  document.getElementById("input-meeting-end").value = "11:00";
+
+  const dateSelect = document.getElementById("input-meeting-date");
+  dateSelect.innerHTML = APP_DATA.days.map((d) => `<option value="${d.key}">${d.dateStr}</option>`).join("");
+
+  const participantsGroup = document.getElementById("meeting-participants-group");
+  const titleEl = document.getElementById("meeting-bulk-title");
+  const descEl = document.getElementById("meeting-bulk-desc");
+
+  if (mode === "joint") {
+    participantsGroup.style.display = "none";
+    titleEl.innerText = "สร้างประชุมร่วม";
+    descEl.innerText = `สมาชิก Active ทั้งหมด (${getActiveMembers().length} คน) จะถูกใส่ในประชุมนี้`;
+  } else {
+    participantsGroup.style.display = "block";
+    titleEl.innerText = "สร้างประชุมแยก";
+    descEl.innerText = "เลือกผู้เข้าร่วมเฉพาะคนที่เกี่ยวข้อง";
+    const picker = document.getElementById("meeting-person-picker");
+    picker.innerHTML = getActiveMembers().map((m) => `
+      <label class="person-check-label">
+        <input type="checkbox" value="${m.id}" class="person-checkbox">
+        <span>${m.name}</span>
+      </label>
+    `).join("");
+  }
+
+  openModal(document.getElementById("meeting-bulk-modal"));
+}
+
 function setupGlobalControls() {
   const overlay = document.getElementById("overlay");
   const blockModal = document.getElementById("block-input-modal");
@@ -1466,11 +1693,18 @@ function setupGlobalControls() {
     renderEisenhowerMatrix();
   });
 
+  // Matrix Page "+ งาน" Button (was previously missing its click handler)
+  document.getElementById("btn-open-add-task").addEventListener("click", () => {
+    resetTaskModalToCreateMode();
+    openModal(taskModal);
+  });
+
   // Me Page Triggers
   document.getElementById("me-quick-add-block").addEventListener("click", () => {
-    openBlockInputModal(APP_DATA.currentUserId, "2026-09-18", "09:00", "11:00");
+    openBlockInputModal(APP_DATA.currentUserId, APP_DATA.days[0].key, "09:00", "11:00");
   });
   document.getElementById("me-quick-add-task").addEventListener("click", () => {
+    resetTaskModalToCreateMode();
     document.getElementById("input-task-owner").value = APP_DATA.currentUserId;
     openModal(taskModal);
   });
@@ -1532,7 +1766,7 @@ function setupGlobalControls() {
       end,
       type: activeType,
       taskId: activeType === "work" ? document.getElementById("input-block-task-id").value : null,
-      reason: activeType === "busy" ? document.getElementById("input-block-reason").value.trim() || t("status_busy") : null
+      reason: activeType === "busy" || activeType === "meeting" ? document.getElementById("input-block-reason").value.trim() || t("status_" + activeType) : null
     };
 
     const finalId = existingId || `b_${Date.now()}`;
@@ -1567,12 +1801,16 @@ function setupGlobalControls() {
   // Inline Task Creation Trigger
   document.getElementById("btn-create-task-inline").addEventListener("click", () => {
     closeAllOverlays();
-    setTimeout(() => openModal(taskModal), 120);
+    setTimeout(() => {
+      resetTaskModalToCreateMode();
+      openModal(taskModal);
+    }, 120);
   });
 
-  // Save Task Form
+  // Save Task Form (handles BOTH create and edit)
   document.getElementById("form-add-task").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const editingId = document.getElementById("input-task-id").value;
     const title = document.getElementById("input-task-title").value.trim();
     const ownerId = parseInt(document.getElementById("input-task-owner").value);
     const deadlineDate = document.getElementById("input-task-deadline-date").value;
@@ -1585,27 +1823,45 @@ function setupGlobalControls() {
     if (isImportant && !isUrgent) quad = "q2";else
     if (!isImportant && isUrgent) quad = "q3";
 
-    const newTask = {
-      id: `task-${Date.now()}`,
+    const taskFields = {
       title,
       ownerId,
       deadlineDate,
       deadlineTime: timeVal || null,
       quadrant: quad,
-      urgent: isUrgent,
-      status: "In Progress",
-      note: ""
+      urgent: isUrgent
     };
 
     try {
-      await tasksCol.doc(newTask.id).set(newTask);
+      if (editingId) {
+        await tasksCol.doc(editingId).update(taskFields);
+      } else {
+        const newId = `task-${Date.now()}`;
+        await tasksCol.doc(newId).set({ id: newId, ...taskFields, status: "In Progress", note: "" });
+        // stash the generated id so the block below can update local state
+        e.target.dataset.lastNewId = newId;
+      }
     } catch (err) { alert("บันทึกงานไม่สำเร็จ: " + err.message); return; }
 
-    APP_DATA.tasks.unshift(newTask);
+    if (editingId) {
+      const idx = APP_DATA.tasks.findIndex((t) => t.id === editingId);
+      if (idx !== -1) APP_DATA.tasks[idx] = { ...APP_DATA.tasks[idx], ...taskFields };
+    } else {
+      const newId = e.target.dataset.lastNewId;
+      APP_DATA.tasks.unshift({ id: newId, ...taskFields, status: "In Progress", note: "" });
+    }
 
     closeAllOverlays();
-    document.getElementById("form-add-task").reset();
+    resetTaskModalToCreateMode();
     refreshAllActiveViews();
+  });
+
+  // Delete Task (from inside the Add/Edit Task modal)
+  document.getElementById("btn-delete-task-inline").addEventListener("click", async () => {
+    const editingId = document.getElementById("input-task-id").value;
+    if (!editingId) return;
+    await window.deleteTask(editingId);
+    resetTaskModalToCreateMode();
   });
 
   // Deadline Time Toggle
@@ -1623,12 +1879,72 @@ function setupGlobalControls() {
     });
   });
 
+  // Quick reason chips (เรียน / ธุระส่วนตัว)
+  document.querySelectorAll("#reason-chip-row .btn-chip").forEach((chip) => {
+    chip.addEventListener("click", function () {
+      document.getElementById("input-block-reason").value = this.getAttribute("data-reason-val");
+      document.querySelectorAll("#reason-chip-row .btn-chip").forEach((c) => c.classList.remove("active"));
+      this.classList.add("active");
+    });
+  });
+
   // Find a Time Triggers
   document.getElementById("open-find-time").addEventListener("click", () => openModal(findModal));
   document.getElementById("btn-run-find").addEventListener("click", runFindCalculation);
 
+  // Bulk Meeting Triggers (ประชุมร่วม / ประชุมแยก)
+  const meetingModal = document.getElementById("meeting-bulk-modal");
+  document.getElementById("open-meeting-joint").addEventListener("click", () => openMeetingBulkModal("joint"));
+  document.getElementById("open-meeting-separate").addEventListener("click", () => openMeetingBulkModal("separate"));
+
+  document.getElementById("form-meeting-bulk").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const mode = document.getElementById("input-meeting-mode").value;
+    const title = document.getElementById("input-meeting-title").value.trim();
+    const dateKey = document.getElementById("input-meeting-date").value;
+    const start = document.getElementById("input-meeting-start").value;
+    const end = document.getElementById("input-meeting-end").value;
+
+    if (parseTimeToMinutes(end) <= parseTimeToMinutes(start)) {
+      alert("เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม");
+      return;
+    }
+
+    const participantIds = mode === "joint" ?
+      getActiveMembers().map((m) => m.id) :
+      Array.from(document.querySelectorAll("#meeting-person-picker .person-checkbox:checked")).map((el) => parseInt(el.value));
+
+    if (participantIds.length === 0) {
+      alert("เลือกผู้เข้าร่วมอย่างน้อย 1 คน");
+      return;
+    }
+
+    const meetingGroupId = `mtg_${Date.now()}`;
+    const newBlocks = participantIds.map((memberId) => ({
+      id: `b_${Date.now()}_${memberId}_${Math.random().toString(36).slice(2, 6)}`,
+      memberId,
+      dateKey,
+      start,
+      end,
+      type: "meeting",
+      taskId: null,
+      reason: title,
+      meetingGroupId
+    }));
+
+    try {
+      const batch = db.batch();
+      newBlocks.forEach((b) => batch.set(blocksCol.doc(b.id), b));
+      await batch.commit();
+    } catch (err) { alert("สร้างประชุมไม่สำเร็จ: " + err.message); return; }
+
+    APP_DATA.blocks.push(...newBlocks);
+    closeAllOverlays();
+    refreshAllActiveViews();
+  });
+
   // Close Overlays
-  document.querySelectorAll(".btn-close, #close-block-modal, #close-add-task, #close-find-modal, #close-drawer").forEach((btn) => {
+  document.querySelectorAll(".btn-close, #close-block-modal, #close-add-task, #close-find-modal, #close-drawer, #close-meeting-bulk").forEach((btn) => {
     btn.addEventListener("click", closeAllOverlays);
   });
   overlay.addEventListener("click", closeAllOverlays);
