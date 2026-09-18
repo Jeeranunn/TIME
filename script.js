@@ -329,13 +329,14 @@ function generateDays(numDays = 60) {
   return days;
 }
 
-// Returns [startMin, endMin] of whichever period (morning/afternoon/evening)
-// contains the current real clock time, falling back to the first period.
-function getCurrentPeriodRange() {
+// Returns [startMin, endMin] representing the exact current moment (a
+// 1-minute slice), so "team now" always reflects right now — never a fixed
+// morning/afternoon/evening slot that can fall into a gap (e.g. 17:00, noon,
+// or after 21:00) and wrongly default back to the first slot.
+function getCurrentInstant() {
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const period = APP_DATA.periods.find((p) => nowMin >= p.startMin && nowMin < p.endMin);
-  return period ? [period.startMin, period.endMin] : [APP_DATA.periods[0].startMin, APP_DATA.periods[0].endMin];
+  return [nowMin, nowMin + 1];
 }
 
 const INITIAL_DAYS = generateDays(60);
@@ -631,7 +632,7 @@ function renderTeamNowSummary() {
   const container = document.getElementById("team-now-list");
   const counts = { available: 0, work: 0, busy: 0, meeting: 0, nodata: 0 };
   const todayKey = APP_DATA.days[0].key;
-  const [nowStart, nowEnd] = getCurrentPeriodRange();
+  const [nowStart, nowEnd] = getCurrentInstant();
   const activeRoster = getActiveMembers();
 
   container.innerHTML = activeRoster.map((m) => {
@@ -651,7 +652,7 @@ function renderTeamNowSummary() {
     }
 
     return `
-      <div class="team-row" onclick="openRangeInspector('${todayKey}', ${nowStart}, ${nowEnd}, '${m.name} · Morning')">
+      <div class="team-row" onclick="openRangeInspector('${todayKey}', ${nowStart}, ${nowEnd}, '${m.name} · ตอนนี้ (${formatMinutesToTime(nowStart)})')">
         <div class="team-user-info">
           <span class="dot dot-${block.type}"></span>
           <span class="user-name">${m.name}</span>
